@@ -1,0 +1,365 @@
+package org.literacybridge.dashboard.processes;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.google.common.hash.HashingInputStream;
+import com.google.common.io.CountingInputStream;
+import org.apache.commons.io.FileCleaningTracker;
+import org.apache.commons.io.FileDeleteStrategy;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.hibernate.cfg.NotYetImplementedException;
+import org.literacybridge.dashboard.FullSyncher;
+import org.literacybridge.dashboard.model.syncOperations.UpdateProcessingState;
+import org.literacybridge.dashboard.model.syncOperations.UpdateRecord;
+import org.literacybridge.dashboard.model.syncOperations.ValidationParameters;
+import org.literacybridge.dashboard.services.S3Service;
+import org.literacybridge.dashboard.services.SyncherService;
+import org.literacybridge.dashboard.services.UpdateRecordWriterService;
+import org.literacybridge.stats.DirectoryIterator;
+import org.literacybridge.stats.model.DirectoryFormat;
+import org.literacybridge.stats.model.validation.ValidationError;
+import org.literacybridge.stats.processors.ValidatingProcessor;
+import org.literacybridge.utils.FsUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.*;
+import java.util.*;
+
+/**
+ * Controls the lifecycle of content usage updates.
+ */
+@Service
+public class ContentUsageUpdateProcess {
+
+  static private final Logger logger = LoggerFactory.getLogger(ContentUsageUpdateProcess.class);
+
+
+  @Autowired
+  private S3Service s3Service;
+
+  @Autowired
+  private SyncherService syncherService;
+
+
+  @Autowired
+  private UpdateRecordWriterService updateRecordWriterService;
+
+
+  public UpdateUsageContext createContext(UpdateRecord processingState, File tempDir,
+                                          FileCleaningTracker fileCleaningTracker) {
+    UpdateUsageContext context = new UpdateUsageContext(tempDir, fileCleaningTracker);
+    context.setUpdateRecord(processingState);
+    return context;
+  }
+
+  public UpdateUsageContext processUpdateUpload(InputStream is, File tempDir, String deviceName, String updateName,
+                                                FileCleaningTracker fileCleaningTracker)
+      throws IOException {
+
+    //First create our empty context
+    UpdateUsageContext context = new UpdateUsageContext(tempDir, fileCleaningTracker);
+
+    //First put this down on temp storage
+    File initialFile = context.createTempFile(TempFileType.initialFile);
+    FileOutputStream fos = new FileOutputStream(initialFile);
+    HashingInputStream shaIs = FsUtils.createSHAStream(is);
+    CountingInputStream countingIs = FsUtils.createCountingStream(shaIs);
+
+    try {
+      IOUtils.copy(countingIs, fos);
+
+      String sha256 = shaIs.hash().toString();
+      UpdateRecord updateRecord = createInitialUpdateRecord(sha256, deviceName, updateName);
+      context.setUpdateRecord(updateRecord);
+      return context;
+
+    } finally {
+      IOUtils.closeQuietly(fos);
+      IOUtils.closeQuietly(countingIs);
+    }
+  }
+
+
+  public UpdateUsageContext process(@Nonnull UpdateUsageContext context, ValidationParameters validationParameters)
+      throws Exception {
+
+    UpdateProcessingState state = context.getUpdateRecord().getState();
+    while (state != UpdateProcessingState.done && state != UpdateProcessingState.failed && state != UpdateProcessingState.uploadedToDb) {
+      context = processNextStep(context, validationParameters);
+      state = context.getUpdateRecord().getState();
+    }
+    return context;
+  }
+
+
+  @Nonnull
+  public UpdateUsageContext processNextStep(@Nonnull UpdateUsageContext context, ValidationParameters validationParameters)
+      throws Exception {
+    Preconditions.checkNotNull(context.getUpdateRecord().getState(), "UpdateRecord must be set and have a valid state.");
+
+    switch (context.getUpdateRecord().getState()) {
+      case initialized:
+        context = validateAndUpload(context, validationParameters);
+        break;
+
+      case accepted:
+        context = writeUpdatesToDb(context, validationParameters);
+        break;
+
+      case uploadedToDb:
+        throw new NotYetImplementedException("Aggregation feature is not implemented yet");
+
+      case done:
+      case failed:
+        //Nothing to do.
+        break;
+    }
+
+    return context;
+  }
+
+
+  /**
+   * Validate that the zip file is valid, upload the file to S3, and write the status to the DB.
+   *
+   * After this call, the UpdateRecord should have a valid ID.
+   *
+   * @param context
+   * @param validationParameters
+   * @return
+   * @throws Exception
+   */
+  public UpdateUsageContext validateAndUpload(@Nonnull UpdateUsageContext context, @Nonnull ValidationParameters validationParameters)
+      throws Exception {
+
+    final UpdateRecord  updateRecord = context.getUpdateRecord();
+    final boolean       s3ObjectAlreadyExists = s3Service.doesObjectExist(s3Service.getUploadBucket(), updateRecord.getS3Id());
+
+    //If this has already been updated, then this code must have already been run.  In, this case, update the
+    //state and roll.
+    if (s3ObjectAlreadyExists) {
+
+      //Check to see if there is an existing record, if there is, then use the existing one, and
+      //update the state accordingly.  Namely, if this was an upload that caused an error, re-do it only if
+      //the isForced flag is set.
+      UpdateRecord  existingRecord = updateRecordWriterService.findByS3Id(updateRecord.getS3Id());
+      if (existingRecord != null) {
+        context.setUpdateRecord(existingRecord);
+
+        if (existingRecord.getState() == UpdateProcessingState.uploadedToDb ||
+            existingRecord.getState() == UpdateProcessingState.aggegated ||
+            existingRecord.getState() == UpdateProcessingState.done) {
+          return context;
+        }
+      }
+    }
+
+    //Otherwise, first unzip and validate
+    File initialFile = context.tempFileMap.get(TempFileType.initialFile);
+    if (initialFile == null || !initialFile.exists()) {
+      throw new IllegalArgumentException("Context state is invalid, because the initial download file does not exist!!!");
+    }
+
+    List<ValidationError> validationErrors = unzipAndValidate(context, validationParameters.getFormat(), validationParameters.isStrict());
+    updateRecordBasedOnValidationErrors(updateRecord, validationErrors, validationParameters.isForce());
+    context.validationErrors = validationErrors;
+
+
+    if (!s3ObjectAlreadyExists) {
+      uploadInitialFileTOS3(updateRecord, initialFile);
+    }
+
+    //
+    //Now save out results
+    updateRecordWriterService.writeWithErrors(updateRecord, validationErrors);
+    return context;
+  }
+
+  @Nonnull
+  private UpdateRecord createInitialUpdateRecord(@Nonnull String sha256, @Nonnull String deviceName, @Nonnull String updateName) {
+
+    UpdateRecord  updateRecord = new UpdateRecord();
+    updateRecord.setS3Id(sha256);
+    updateRecord.setState(UpdateProcessingState.initialized);
+    updateRecord.setStartTime(new Date());
+    updateRecord.setExternalId(UUID.randomUUID().toString());
+    updateRecord.setDeviceName(deviceName);
+    updateRecord.setUpdateName(updateName);
+    updateRecord.setSha256(sha256);
+
+    return updateRecord;
+  }
+
+  @Nonnull
+  private List<ValidationError> unzipAndValidate(@Nonnull UpdateUsageContext context, @Nullable DirectoryFormat format, boolean isStrict)
+      throws Exception {
+
+    File explodedDir = context.createTempFile(TempFileType.explodedDir);
+    FsUtils.unzip(context.tempFileMap.get(TempFileType.initialFile), explodedDir);
+
+    DirectoryIterator iterator = new DirectoryIterator(explodedDir, format, isStrict);
+    ValidatingProcessor validatingProcessor = new ValidatingProcessor();
+    iterator.process(validatingProcessor);
+    return validatingProcessor.validationErrors;
+  }
+
+  private void updateRecordBasedOnValidationErrors(@Nonnull UpdateRecord updateRecord, @Nonnull List<ValidationError> validationErrors, boolean force) {
+
+    if (!validationErrors.isEmpty()) {
+      if (!force) {
+        updateRecord.setState(UpdateProcessingState.failed);
+        updateRecord.setMessage("Failed with " + validationErrors.size() + ".  First error = " + validationErrors.get(0).errorMessage);
+      } else {
+        updateRecord.setState(UpdateProcessingState.accepted);
+        updateRecord.setMessage(
+            validationErrors.size() + " validation erorrs.  Import proceeding, because 'force' option is set.  First error = " + validationErrors.get(
+                0).errorMessage);
+      }
+    } else {
+      updateRecord.setState(UpdateProcessingState.accepted);
+      updateRecord.setMessage("File accepted with no validation errors.");
+    }
+  }
+
+  private void uploadInitialFileTOS3(@Nonnull UpdateRecord updateRecord, File initialFile)
+      throws FileNotFoundException {
+    Map<String, String> userMetadata = ImmutableMap.of(
+        "updateName", updateRecord.getUpdateName(),
+        "deviceName", updateRecord.getDeviceName(),
+        "sha256",     updateRecord.getSha256()
+    );
+
+    InputStream fis = new FileInputStream(initialFile);
+    try {
+      s3Service.writeZipObject(s3Service.getUploadBucket(), updateRecord.getS3Id(), fis, initialFile.length(), userMetadata);
+    } finally {
+      IOUtils.closeQuietly(fis);
+    }
+  }
+
+
+  @Nonnull
+  protected File assureExplodedDir(@Nonnull UpdateUsageContext context) throws IOException {
+    File retVal = context.tempFileMap.get(TempFileType.explodedDir);
+    if (retVal == null) {
+      File  initialFile = context.tempFileMap.get(TempFileType.initialFile);
+      if (initialFile == null) {
+        initialFile = context.createTempFile(TempFileType.initialFile);
+        s3Service.getObject(s3Service.getUploadBucket(), context.getUpdateRecord().getS3Id(), initialFile);
+      }
+
+      retVal = context.createTempFile(TempFileType.explodedDir);
+      FsUtils.unzip(initialFile, retVal);
+    }
+
+    return retVal;
+  }
+
+  public UpdateUsageContext writeUpdatesToDb(@Nonnull UpdateUsageContext context, @Nonnull ValidationParameters validationParameters) throws Exception {
+
+    File  explodedDir = assureExplodedDir(context);
+
+    FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId(), .1, Lists.newArrayList(syncherService.createSyncWriter()));
+    fullSyncher.processData(explodedDir);
+    fullSyncher.doConsistencyCheck();
+
+    context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
+    updateRecordWriterService.write(context.getUpdateRecord());
+    return context;
+  }
+
+  public UpdateUsageContext aggregateUpdates(@Nonnull UpdateUsageContext context, @Nonnull ValidationParameters validationParameters) throws Exception {
+
+    File  explodedDir = assureExplodedDir(context);
+
+    FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId().longValue(), .1, Lists.newArrayList(syncherService.createSyncWriter()));
+    fullSyncher.processData(explodedDir);
+    fullSyncher.doConsistencyCheck();
+
+    context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
+    updateRecordWriterService.write(context.getUpdateRecord());
+    return context;
+  }
+
+
+  /**
+   * Unique definitions for the different temp file types.
+   */
+  enum TempFileType {
+    initialFile(".zip", false),
+    explodedDir("", true),
+    aggregationDest("", true),
+    zippedAggregation(".zip", false);
+
+    public final String suffix;
+    public final boolean isDir;
+
+    TempFileType(String suffix, boolean dir) {
+      this.suffix = suffix;
+      isDir = dir;
+    }
+  }
+
+  /**
+   * Contains the full context of an update usage update.  This references the canonical
+   * state information that will go in the DB as well as the in flight transient references to things
+   * like temp files and directories.
+   *
+   * This structure is responsible for allocating and tracking temporary files in such a way that they will be cleaned
+   * up by a tracker thread.
+   */
+  public class UpdateUsageContext {
+
+    public final File                     tempDirRoot;
+    public final FileCleaningTracker      fileCleaningTracker;
+    public final Map<TempFileType, File>  tempFileMap = new HashMap<>();
+
+    public List<ValidationError>  validationErrors = Collections.EMPTY_LIST;
+
+    protected UpdateRecord updateRecord;
+
+    public UpdateUsageContext(File tempDirRoot, FileCleaningTracker fileCleaningTracker) {
+      this.tempDirRoot = tempDirRoot;
+      this.fileCleaningTracker = fileCleaningTracker;
+    }
+
+    public UpdateRecord getUpdateRecord() {
+      return updateRecord;
+    }
+
+    public void setUpdateRecord(UpdateRecord updateRecord) {
+      this.updateRecord = updateRecord;
+    }
+
+    public File createTempFile(TempFileType type) throws IOException {
+      final File retVal = File.createTempFile(type.toString(), type.suffix, tempDirRoot);
+      if (type.isDir) {
+        retVal.delete();
+        retVal.mkdir();
+      }
+
+      if (fileCleaningTracker != null) {
+        fileCleaningTracker.track(retVal, retVal, FileDeleteStrategy.FORCE);
+      }
+      tempFileMap.put(type, retVal);
+
+      return retVal;
+    }
+
+    public boolean deleteTempFile(TempFileType type) {
+      File  tempFile = tempFileMap.remove(type);
+      if (tempFile != null) {
+        return FileUtils.deleteQuietly(tempFile);
+      }
+
+      return true;
+    }
+  }
+}
