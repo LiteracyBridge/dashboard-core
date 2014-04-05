@@ -70,12 +70,7 @@ public class TbData {
     ApplicationContext context = new ClassPathXmlApplicationContext(
         "spring/lb-core-spring.xml");
 
-    Object o = context.getBean("contentUsageUpdateController");
-
     SyncherService syncherService = (SyncherService) context.getBean("syncherService");
-    UpdateRecordWriterService updateRecordWriterService= (UpdateRecordWriterService) context.getBean("updateRecordWriterService");
-
-
 
     CommandLineParser parser = new PosixParser();
     CommandLine cmd = parser.parse( options, args);
