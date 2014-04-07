@@ -12,7 +12,7 @@ import org.apache.commons.io.IOUtils;
 import org.hibernate.cfg.NotYetImplementedException;
 import org.literacybridge.dashboard.FullSyncher;
 import org.literacybridge.dashboard.model.syncOperations.UpdateProcessingState;
-import org.literacybridge.dashboard.model.syncOperations.UpdateRecord;
+import org.literacybridge.dashboard.model.syncOperations.UsageUpdateRecord;
 import org.literacybridge.dashboard.model.syncOperations.ValidationParameters;
 import org.literacybridge.dashboard.services.S3Service;
 import org.literacybridge.dashboard.services.SyncherService;
@@ -52,7 +52,7 @@ public class ContentUsageUpdateProcess {
   private UpdateRecordWriterService updateRecordWriterService;
 
 
-  public UpdateUsageContext createContext(UpdateRecord processingState, File tempDir,
+  public UpdateUsageContext createContext(UsageUpdateRecord processingState, File tempDir,
                                           FileCleaningTracker fileCleaningTracker) {
     UpdateUsageContext context = new UpdateUsageContext(tempDir, fileCleaningTracker);
     context.setUpdateRecord(processingState);
@@ -76,7 +76,7 @@ public class ContentUsageUpdateProcess {
       IOUtils.copy(countingIs, fos);
 
       String sha256 = shaIs.hash().toString();
-      UpdateRecord updateRecord = createInitialUpdateRecord(sha256, deviceName, updateName);
+      UsageUpdateRecord updateRecord = createInitialUpdateRecord(sha256, deviceName, updateName);
       context.setUpdateRecord(updateRecord);
       return context;
 
@@ -139,7 +139,7 @@ public class ContentUsageUpdateProcess {
   public UpdateUsageContext validateAndUpload(@Nonnull UpdateUsageContext context, @Nonnull ValidationParameters validationParameters)
       throws Exception {
 
-    final UpdateRecord  updateRecord = context.getUpdateRecord();
+    final UsageUpdateRecord updateRecord = context.getUpdateRecord();
     final boolean       s3ObjectAlreadyExists = s3Service.doesObjectExist(s3Service.getUploadBucket(), updateRecord.getS3Id());
 
     //If this has already been updated, then this code must have already been run.  In, this case, update the
@@ -149,7 +149,7 @@ public class ContentUsageUpdateProcess {
       //Check to see if there is an existing record, if there is, then use the existing one, and
       //update the state accordingly.  Namely, if this was an upload that caused an error, re-do it only if
       //the isForced flag is set.
-      UpdateRecord  existingRecord = updateRecordWriterService.findByS3Id(updateRecord.getS3Id());
+      UsageUpdateRecord existingRecord = updateRecordWriterService.findByS3Id(updateRecord.getS3Id());
       if (existingRecord != null) {
         context.setUpdateRecord(existingRecord);
 
@@ -183,9 +183,9 @@ public class ContentUsageUpdateProcess {
   }
 
   @Nonnull
-  private UpdateRecord createInitialUpdateRecord(@Nonnull String sha256, @Nonnull String deviceName, @Nonnull String updateName) {
+  private UsageUpdateRecord createInitialUpdateRecord(@Nonnull String sha256, @Nonnull String deviceName, @Nonnull String updateName) {
 
-    UpdateRecord  updateRecord = new UpdateRecord();
+    UsageUpdateRecord updateRecord = new UsageUpdateRecord();
     updateRecord.setS3Id(sha256);
     updateRecord.setState(UpdateProcessingState.initialized);
     updateRecord.setStartTime(new Date());
@@ -210,7 +210,7 @@ public class ContentUsageUpdateProcess {
     return validatingProcessor.validationErrors;
   }
 
-  private void updateRecordBasedOnValidationErrors(@Nonnull UpdateRecord updateRecord, @Nonnull List<ValidationError> validationErrors, boolean force) {
+  private void updateRecordBasedOnValidationErrors(@Nonnull UsageUpdateRecord updateRecord, @Nonnull List<ValidationError> validationErrors, boolean force) {
 
     if (!validationErrors.isEmpty()) {
       if (!force) {
@@ -228,7 +228,7 @@ public class ContentUsageUpdateProcess {
     }
   }
 
-  private void uploadInitialFileTOS3(@Nonnull UpdateRecord updateRecord, File initialFile)
+  private void uploadInitialFileTOS3(@Nonnull UsageUpdateRecord updateRecord, File initialFile)
       throws FileNotFoundException {
     Map<String, String> userMetadata = ImmutableMap.of(
         "updateName", updateRecord.getUpdateName(),
@@ -317,24 +317,24 @@ public class ContentUsageUpdateProcess {
    */
   public class UpdateUsageContext {
 
-    public final File                     tempDirRoot;
-    public final FileCleaningTracker      fileCleaningTracker;
-    public final Map<TempFileType, File>  tempFileMap = new HashMap<>();
+    public final File                tempDirRoot;
+    public final FileCleaningTracker fileCleaningTracker;
+    public final Map<TempFileType, File> tempFileMap = new HashMap<>();
 
-    public List<ValidationError>  validationErrors = Collections.EMPTY_LIST;
+    public List<ValidationError> validationErrors = Collections.EMPTY_LIST;
 
-    protected UpdateRecord updateRecord;
+    protected UsageUpdateRecord updateRecord;
 
     public UpdateUsageContext(File tempDirRoot, FileCleaningTracker fileCleaningTracker) {
       this.tempDirRoot = tempDirRoot;
       this.fileCleaningTracker = fileCleaningTracker;
     }
 
-    public UpdateRecord getUpdateRecord() {
+    public UsageUpdateRecord getUpdateRecord() {
       return updateRecord;
     }
 
-    public void setUpdateRecord(UpdateRecord updateRecord) {
+    public void setUpdateRecord(UsageUpdateRecord updateRecord) {
       this.updateRecord = updateRecord;
     }
 
@@ -354,7 +354,7 @@ public class ContentUsageUpdateProcess {
     }
 
     public boolean deleteTempFile(TempFileType type) {
-      File  tempFile = tempFileMap.remove(type);
+      File tempFile = tempFileMap.remove(type);
       if (tempFile != null) {
         return FileUtils.deleteQuietly(tempFile);
       }

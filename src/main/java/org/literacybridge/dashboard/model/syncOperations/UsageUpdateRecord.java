@@ -10,7 +10,7 @@ import java.util.Date;
 @Table(name = "updaterecord", uniqueConstraints={
     @UniqueConstraint(columnNames = {"s3Id", "deletedTime"})
 })
-public class UpdateRecord {
+public class UsageUpdateRecord {
   @Id
   @GeneratedValue
   private Long id;
