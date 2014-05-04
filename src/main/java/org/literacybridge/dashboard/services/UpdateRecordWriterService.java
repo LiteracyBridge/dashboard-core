@@ -39,6 +39,13 @@ public class UpdateRecordWriterService {
     }
   }
 
+  @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+  public List<UsageUpdateRecord> list() throws IOException {
+    final String hqlResult = "from UsageUpdateRecord ur where ur.deletedTime != '1974-1-1'";
+    final Query  hqlQuery = sessionFactory.getCurrentSession().createQuery(hqlResult);
+    return (List<UsageUpdateRecord>) hqlQuery.list();
+  }
+
 
   @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
   public UsageUpdateRecord findById(long i) {
@@ -47,18 +54,16 @@ public class UpdateRecordWriterService {
 
   @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
   public UsageUpdateRecord findByS3Id(String s3Id) {
-    final String hqlResult = "from UpdateRecord ur where ur.deletedTime != '1974-1-1' AND ur.s3Id=:s3Id";
+    final String hqlResult = "from UsageUpdateRecord ur where ur.deletedTime != '1974-1-1' AND ur.s3Id=:s3Id";
     final Query  hqlQuery = sessionFactory.getCurrentSession().createQuery(hqlResult).setString("s3Id", s3Id);
     return (UsageUpdateRecord) hqlQuery.uniqueResult();
   }
 
-  /*
-  public List<UpdateRecord> findByStatus(UpdateProcessingState state) {
-    final String query = " from UpdateRecord as r where r.state = ?";
-    sessionFactory.getCurrentSession();
-
-    )
+  @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
+  public UsageUpdateRecord findByExternalId(String externalId) {
+    final String hqlResult = "from UsageUpdateRecord ur where ur.externalId=:externalId";
+    final Query  hqlQuery = sessionFactory.getCurrentSession().createQuery(hqlResult).setString("externalId", externalId);
+    return (UsageUpdateRecord) hqlQuery.uniqueResult();
   }
-  */
 
 }

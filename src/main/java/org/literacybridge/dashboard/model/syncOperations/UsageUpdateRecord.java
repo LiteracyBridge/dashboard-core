@@ -6,7 +6,7 @@ import java.util.Date;
 /**
  * This is a record of a content update occuring.  It will
  */
-@Entity(name = "UpdateRecord")
+@Entity(name = "UsageUpdateRecord")
 @Table(name = "updaterecord", uniqueConstraints={
     @UniqueConstraint(columnNames = {"s3Id", "deletedTime"})
 })
@@ -18,7 +18,7 @@ public class UsageUpdateRecord {
   @Column(nullable = false)
   Date startTime;
 
-  @Column(nullable = true, columnDefinition="timestamp default '1974-1-1'")
+  @Column(nullable = false, columnDefinition="timestamp default '1974-1-1'")
   Date deletedTime;
 
   @Column(nullable = false, unique=true)
