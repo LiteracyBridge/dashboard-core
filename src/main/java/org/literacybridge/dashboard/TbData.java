@@ -122,7 +122,7 @@ public class TbData {
       DataArchiver.fixupOnly(destDir, cmd.hasOption("a") ? DirectoryFormat.Archive : DirectoryFormat.Sync);
     } else {
       File root = new File (cmd.getOptionValue("r", "."));
-      fullSyncher.processData(root);
+      fullSyncher.processData(root, cmd.hasOption("a") ? DirectoryFormat.Archive : DirectoryFormat.Sync, false);
     }
 
     StatAggregator stats = fullSyncher.doConsistencyCheck();

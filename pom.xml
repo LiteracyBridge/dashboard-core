@@ -174,7 +174,7 @@
                         </descriptorRefs>
                         <archive>
                             <manifest>
-                                <mainClass>org.literacybridge.dashboard.TbData</mainClass>
+                                <mainClass>org.literacybridge.dashboard.TbData2</mainClass>
                             </manifest>
                         </archive>
                     </configuration>
