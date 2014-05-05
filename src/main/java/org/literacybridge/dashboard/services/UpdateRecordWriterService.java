@@ -2,6 +2,7 @@ package org.literacybridge.dashboard.services;
 
 import org.hibernate.Query;
 import org.hibernate.SessionFactory;
+import org.joda.time.DateTime;
 import org.literacybridge.dashboard.model.syncOperations.UsageUpdateRecord;
 import org.literacybridge.dashboard.model.syncOperations.UpdateValidationError;
 import org.literacybridge.stats.model.validation.ValidationError;
@@ -12,12 +13,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
  */
 @Repository(value = "updateRecordWriter")
 public class UpdateRecordWriterService {
+
+  private static Date NON_DELETED_DATE;
+
+  static {
+    try {
+      SimpleDateFormat  sdf = new SimpleDateFormat("yyyy-M-d");
+      NON_DELETED_DATE = sdf.parse("1974-1-1");
+    } catch (ParseException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Resource
   private SessionFactory sessionFactory;
 

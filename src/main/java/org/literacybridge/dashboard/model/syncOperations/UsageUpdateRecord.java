@@ -18,7 +18,7 @@ public class UsageUpdateRecord {
   @Column(nullable = false)
   Date startTime;
 
-  @Column(nullable = false, columnDefinition="timestamp default '1974-1-1'")
+  @Column(nullable = true, columnDefinition="timestamp default '1974-1-1'")
   Date deletedTime;
 
   @Column(nullable = false, unique=true)

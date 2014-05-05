@@ -31,7 +31,7 @@ public class TbData2 {
     options.addOption("?", false, "Help");
     options.addOption("z", true, "Zip file to process.");
 
-    options.addOption("a", false, "Directory format is using the 'archive' format");
+    options.addOption("o", false, "Directory format is using the older format");
     options.addOption("f", false, "Force update, even if there are errors.");
     options.addOption("s", false, "Do strict format checks.");
 
@@ -57,7 +57,7 @@ public class TbData2 {
     ValidationParameters validationParameters = new ValidationParameters();
     validationParameters.setForce(cmd.hasOption("f"));
     validationParameters.setStrict(cmd.hasOption("s"));
-    validationParameters.setFormat(cmd.hasOption("a") ? DirectoryFormat.Archive : DirectoryFormat.Sync);
+    validationParameters.setFormat(cmd.hasOption("o") ? DirectoryFormat.Sync : DirectoryFormat.Archive);
 
     if (!cmd.hasOption("z")) {
       System.out.println("ERROR:  MUST provide the -z option for the zip file to import.");
