@@ -267,7 +267,7 @@ public class ContentUsageUpdateProcess {
     File  explodedDir = assureExplodedDir(context);
 
     FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId(), .1, Lists.newArrayList(syncherService.createSyncWriter()));
-    fullSyncher.processData(explodedDir);
+    fullSyncher.processData(explodedDir, validationParameters.getFormat(), validationParameters.isStrict());
     fullSyncher.doConsistencyCheck();
 
     context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
