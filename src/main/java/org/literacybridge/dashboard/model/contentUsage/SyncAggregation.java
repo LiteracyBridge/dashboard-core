@@ -32,7 +32,6 @@ public class SyncAggregation {
   @Column(nullable = false)  int     totalTimePlayed;
 
   //Metadata
-  @Column(nullable = false)  int     dataSource;
   @Column(nullable = true )  double  disparity;
 
 
@@ -124,11 +123,4 @@ public class SyncAggregation {
     this.totalTimePlayed = totalTimePlayed;
   }
 
-  public int getDataSource() {
-    return dataSource;
-  }
-
-  public void setDataSource(int dataSource) {
-    this.dataSource = dataSource;
-  }
 }
