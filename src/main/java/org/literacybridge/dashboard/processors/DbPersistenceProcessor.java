@@ -1,6 +1,7 @@
 package org.literacybridge.dashboard.processors;
 
 import com.google.common.collect.Lists;
+
 import org.literacybridge.dashboard.aggregation.AggregationOf;
 import org.literacybridge.dashboard.aggregation.Aggregations;
 import org.literacybridge.dashboard.aggregation.UpdateAggregations;
@@ -12,6 +13,7 @@ import org.literacybridge.stats.formats.flashData.FlashData;
 import org.literacybridge.stats.formats.flashData.NORmsgStats;
 import org.literacybridge.stats.formats.logFile.LogAction;
 import org.literacybridge.stats.formats.logFile.LogLineContext;
+import org.literacybridge.stats.formats.statsFile.StatsFile;
 import org.literacybridge.dashboard.model.contentUsage.ContentSyncUniqueId;
 import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
 import org.literacybridge.stats.model.events.Event;
@@ -85,7 +87,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
       final Aggregations contentAggregation = contentAggregations.get(contentId);
       corruptLines += contentAggregation.get(AggregationOf.corruptedLines);
 
-      if (!flashDataProcessed) {
+      if (true /*!flashDataProcessed*/) {
         try {
           ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(contentId, context);
           SyncAggregation     syncAggregation = new SyncAggregation();
@@ -342,6 +344,38 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
   public void processCorruptFlashData(SyncProcessingContext context, String flashDataPath, String errorMessage) {
     backupContentAggregations.processCorruptFlashData(context, flashDataPath, errorMessage);
     super.processCorruptFlashData(context, flashDataPath, errorMessage);
+  }
+  @Override
+  public void processStatsFile(SyncProcessingContext context, String contentId, StatsFile statsFile) {
+    //backupContentAggregations.processStatsFile(context, statsFile.messageId, statsFile);
+
+      try {
+        ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(statsFile.messageId, context);
+        SyncAggregation     syncAggregation = new SyncAggregation();
+
+        syncAggregation.setContentSyncUniqueId(contentSyncUniqueId);
+        syncAggregation.setContentPackage(context.contentPackage);
+        syncAggregation.setVillage(context.village);
+        syncAggregation.setDataSource(SyncAggregation.STAT_FILES);
+
+        syncAggregation.setCountApplied       (statsFile.appliedCount);
+        syncAggregation.setCountUseless       (statsFile.uselessCount);
+        //TODO: we need to add total surveys taken
+        syncAggregation.setCountStarted       (statsFile.openCount-statsFile.completionCount);
+        syncAggregation.setCountQuarter       (0);
+        syncAggregation.setCountHalf          (0);
+        syncAggregation.setCountThreeQuarters (0);
+        syncAggregation.setCountCompleted     (statsFile.completionCount);
+        syncAggregation.setTotalTimePlayed    (0);
+
+        for (TalkingBookSyncWriter writer : writers) {
+          writer.writeAggregation(syncAggregation);
+        }
+      } catch (IllegalArgumentException e) {
+        logger.error(e.getMessage() + ": cannot create aggregation from statsfile for " + context.toString());
+      } catch (IOException e) {
+          logger.error(e.getMessage() + ": TalkingBookSyncWriter IO Exception for " + context.toString());    	  
+      }
   }
 
 
