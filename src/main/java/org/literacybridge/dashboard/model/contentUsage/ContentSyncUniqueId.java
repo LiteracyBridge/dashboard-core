@@ -14,7 +14,7 @@ import java.io.Serializable;
 @Embeddable
 public class ContentSyncUniqueId implements Serializable {
 
-  public static ContentSyncUniqueId createFromContext(String contentId, ProcessingContext context) {
+  public static ContentSyncUniqueId createFromContext(String contentId, ProcessingContext context, int dataSource) {
     Preconditions.checkArgument(contentId != null,               "ContentId MUST not be null for a content aggregation");
     Preconditions.checkArgument(context.deploymentId != null, "ContentUpdateId MUST not be null for a content aggregation");
     Preconditions.checkArgument(context.talkingBookId != null,   "talkingBookId MUST not be null for a content aggregation");
@@ -23,20 +23,24 @@ public class ContentSyncUniqueId implements Serializable {
     uniqueId.setContentId(contentId);
     uniqueId.setContentUpdate(context.deploymentId.id);
     uniqueId.setTalkingBook(context.talkingBookId);
+    uniqueId.setDataSource(dataSource);
     return uniqueId;
   }
 
   @Column(nullable = false) String  contentUpdate;
   @Column(nullable = false) String  talkingBook;
   @Column(nullable = false) String  contentId;
+  @Column(nullable = false) int     dataSource;
 
-  public ContentSyncUniqueId() {
+
+    public ContentSyncUniqueId() {
   }
 
-  public ContentSyncUniqueId(String contentUpdate, String talkingBook, String contentId) {
+  public ContentSyncUniqueId(String contentUpdate, String talkingBook, String contentId, int dataSource) {
     this.contentUpdate = contentUpdate;
     this.talkingBook = talkingBook;
     this.contentId = contentId;
+    this.dataSource = dataSource;
   }
 
   public String getContentUpdate() {
@@ -63,6 +67,14 @@ public class ContentSyncUniqueId implements Serializable {
     this.contentId = contentId;
   }
 
+  public int getDataSource() {
+    return dataSource;
+  }
+
+  public void setDataSource(int dataSource) {
+    this.dataSource = dataSource;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -70,6 +82,7 @@ public class ContentSyncUniqueId implements Serializable {
 
     ContentSyncUniqueId that = (ContentSyncUniqueId) o;
 
+    if (dataSource != that.dataSource) return false;
     if (contentId != null ? !contentId.equals(that.contentId) : that.contentId != null) return false;
     if (contentUpdate != null ? !contentUpdate.equals(that.contentUpdate) : that.contentUpdate != null) return false;
     if (talkingBook != null ? !talkingBook.equals(that.talkingBook) : that.talkingBook != null) return false;
@@ -82,6 +95,7 @@ public class ContentSyncUniqueId implements Serializable {
     int result = contentUpdate != null ? contentUpdate.hashCode() : 0;
     result = 31 * result + (talkingBook != null ? talkingBook.hashCode() : 0);
     result = 31 * result + (contentId != null ? contentId.hashCode() : 0);
+    result = 31 * result + dataSource;
     return result;
   }
 
@@ -90,6 +104,7 @@ public class ContentSyncUniqueId implements Serializable {
         .append("contentUpdate", contentUpdate)
         .append("talkingBook", talkingBook)
         .append("contentId", contentId)
+        .append("dataSource", dataSource)
         .toString();
   }
 }

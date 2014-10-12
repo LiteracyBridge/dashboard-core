@@ -89,13 +89,12 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
       if (true /*!flashDataProcessed*/) {
         try {
-          ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(contentId, context);
+          ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(contentId, context, SyncAggregation.LOG_EVENTS);
           SyncAggregation     syncAggregation = new SyncAggregation();
 
           syncAggregation.setContentSyncUniqueId(contentSyncUniqueId);
           syncAggregation.setContentPackage(context.contentPackage);
           syncAggregation.setVillage(context.village);
-          syncAggregation.setDataSource(SyncAggregation.LOG_EVENTS);
 
           syncAggregation.setCountApplied       (contentAggregation.get(AggregationOf.surveyApplied));
           syncAggregation.setCountUseless       (contentAggregation.get(AggregationOf.surveyUseless));
@@ -311,13 +310,12 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
     for (NORmsgStats msgStats :  flashData.allStats()) {
 
       try {
-        ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(msgStats.getContentId(), context);
+        ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(msgStats.getContentId(), context, SyncAggregation.FLASH_DATA);
         SyncAggregation     syncAggregation = new SyncAggregation();
 
         syncAggregation.setContentSyncUniqueId(contentSyncUniqueId);
         syncAggregation.setContentPackage(context.contentPackage);
         syncAggregation.setVillage(context.village);
-        syncAggregation.setDataSource(SyncAggregation.FLASH_DATA);
 
         syncAggregation.setCountApplied       (msgStats.getCountApplied());
         syncAggregation.setCountUseless       (msgStats.getCountUseless());
@@ -350,13 +348,12 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
     //backupContentAggregations.processStatsFile(context, statsFile.messageId, statsFile);
 
       try {
-        ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(statsFile.messageId, context);
+        ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(statsFile.messageId, context, SyncAggregation.STAT_FILES);
         SyncAggregation     syncAggregation = new SyncAggregation();
 
         syncAggregation.setContentSyncUniqueId(contentSyncUniqueId);
         syncAggregation.setContentPackage(context.contentPackage);
         syncAggregation.setVillage(context.village);
-        syncAggregation.setDataSource(SyncAggregation.STAT_FILES);
 
         syncAggregation.setCountApplied       (statsFile.appliedCount);
         syncAggregation.setCountUseless       (statsFile.uselessCount);
