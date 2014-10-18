@@ -22,7 +22,7 @@ The business logic behind the dashboard.  This contains no UI, nor REST apis, ho
 
     mvn clean install
 
-will build the project cleanly, run all the unit tests and  
+will build the project cleanly and run all the unit tests.
 
 ### Configuring ###
 
