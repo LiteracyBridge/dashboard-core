@@ -15,7 +15,7 @@ The business logic behind the dashboard.  This contains no UI, nor REST apis, ho
 : This project currently uses Maven for building.  Make sure you have maven installed.  If you don't you can get one at http://maven.apache.org/download.cgi
 
 **Core Api**
-: This project depends on another Literacy Bridge project that contains code to handle all the file formats.  Get this project by synching via Git or SVn from github, and then build according to the directions on https://github.com/willpugh/lb-core-api
+: This project depends on another Literacy Bridge project that contains code to handle all the file formats.  Get this project from https://github.com/willpugh/lb-core-api and build per the directions.
 
 
 ### Building ###
@@ -45,9 +45,9 @@ You can execute the self-contained jar to use the commandline tools by simply ca
 
     java -jar target/core-with-deps.jar -?
 
-or using the convience script in 
+or using the convenience script in 
     target/lb-dashboard
 
 
-There will initially be a decent amount of spewed out logging information.  This is where the tool is determining that the database has the appropraite schema objects in it. **It is important to note that this commandline tool goes directly against the DB + S3, so it is a low-level tool.  You should only use this if you know what  you are doing.  Otherwise, try to use the REST APIs on the dashboard itself.**
+There will initially be a decent amount of spewed out logging information.  This is where the tool is determining that the database has the appropriate schema objects in it. **It is important to note that this commandline tool goes directly against the DB + S3, so it is a low-level tool.  You should only use this if you know what  you are doing.  Otherwise, try to use the REST APIs on the dashboard itself.**
 
