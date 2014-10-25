@@ -80,14 +80,22 @@
           <artifactId>slf4j-api</artifactId>
           <version>1.7.5</version>
       </dependency>
+      <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>jul-to-slf4j</artifactId>
+          <version>1.7.5</version>
+      </dependency>
+      <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>jcl-over-slf4j</artifactId>
+          <version>1.7.5</version>
+      </dependency>
 
-      <!--
       <dependency>
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-simple</artifactId>
           <version>1.7.5</version>
       </dependency>
-      -->
 
       <dependency>
           <groupId>joda-time</groupId>
@@ -223,6 +231,9 @@
                                 <usedDependency>postgresql:postgresql</usedDependency>
                                 <usedDependency>c3p0:c3p0</usedDependency>
                                 <usedDependency>org.springframework:spring-orm</usedDependency>
+                                <usedDependency>org.slf4j:slf4j-simple</usedDependency>
+                                <usedDependency>org.slf4j:jul-to-slf4j</usedDependency>
+                                <usedDependency>org.slf4j:jcl-over-slf4j</usedDependency>
                             </usedDependencies>
                         </configuration>
                     </execution>
