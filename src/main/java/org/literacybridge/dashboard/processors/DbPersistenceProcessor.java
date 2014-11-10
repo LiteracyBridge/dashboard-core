@@ -41,6 +41,11 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
   String category          = "";
   String recordedContentId = null;
 
+  //HACK(willpugh) - This is here as a hack.  We need to get the content package in onTalkingBookEnd,
+  //however, this information is not available until you are in a sync context, so we need to
+  //stash this for later.  The content package SHOULD be the same for all syncs, but we could
+  //invent ways this would get tricked.
+  SyncProcessingContext syncProcessingContext = null;
   LogLineContext surveyLogLineContext = null;
   String         surveyContentId      = null;
 
@@ -87,13 +92,13 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
       final Aggregations contentAggregation = contentAggregations.get(contentId);
       corruptLines += contentAggregation.get(AggregationOf.corruptedLines);
 
-      if (true /*!flashDataProcessed*/) {
+      if (syncProcessingContext != null) {
         try {
           ContentSyncUniqueId contentSyncUniqueId = ContentSyncUniqueId.createFromContext(contentId, context, SyncAggregation.LOG_EVENTS);
           SyncAggregation     syncAggregation = new SyncAggregation();
 
           syncAggregation.setContentSyncUniqueId(contentSyncUniqueId);
-          syncAggregation.setContentPackage(context.contentPackage);
+          syncAggregation.setContentPackage(syncProcessingContext.contentPackage);
           syncAggregation.setVillage(context.village);
 
           syncAggregation.setCountApplied       (contentAggregation.get(AggregationOf.surveyApplied));
@@ -113,6 +118,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
           logger.error(ioe.getMessage() + ": cannot create aggregation from logs for " + context.toString());
         }
       }
+      syncProcessingContext = null;
     }
 
     TalkingBookCorruption talkingBookCorruption = new TalkingBookCorruption();
@@ -131,11 +137,13 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void onPlay(LogLineContext context, String contentId, int volume, double voltage) {
+    syncProcessingContext = context.context;
   }
 
   @Override
   public void onPlayed(LogLineContext context, String contentId, short secondsPlayed, short secondsSomething,
                        int volume, double voltage, boolean ended) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onPlayed(context, contentId, secondsPlayed, secondsSomething, volume, voltage, ended);
 
     if (context.logLineInfo == null) {
@@ -168,6 +176,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void onCategory(LogLineContext context, String categoryId) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onCategory(context, categoryId);
 
     category = categoryId;
@@ -175,6 +184,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void onRecord(LogLineContext context, String contentId, int unknownNumber) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onRecord(context, contentId, unknownNumber);
 
     recordedContentId = contentId;
@@ -182,6 +192,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void onRecorded(LogLineContext context, int secondsRecorded) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onRecorded(context, secondsRecorded);
 
     if (context.logLineInfo == null) {
@@ -208,17 +219,20 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void onPause(LogLineContext context, String contentId) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onPause(context, contentId);
 
   }
 
   @Override
   public void onUnPause(LogLineContext context, String contentId) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onUnPause(context, contentId);
   }
 
   @Override
   public void onSurvey(LogLineContext context, String contentId) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onSurvey(context, contentId);
 
     //If the survey content ID is null, then there was another survey
@@ -251,6 +265,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void onSurveyCompleted(LogLineContext context, String contentId, boolean useful) {
+    syncProcessingContext = context.context;
     backupContentAggregations.onSurveyCompleted(context, contentId, useful);
 
     if (surveyContentId != null && surveyLogLineContext != null) {
@@ -305,6 +320,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void processFlashData(SyncProcessingContext context, FlashData flashData) throws IOException {
+    syncProcessingContext = context;
     backupContentAggregations.processFlashData(context, flashData);
 
     for (NORmsgStats msgStats :  flashData.allStats()) {
@@ -340,11 +356,13 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void processCorruptFlashData(SyncProcessingContext context, String flashDataPath, String errorMessage) {
+    syncProcessingContext = context;
     backupContentAggregations.processCorruptFlashData(context, flashDataPath, errorMessage);
     super.processCorruptFlashData(context, flashDataPath, errorMessage);
   }
   @Override
   public void processStatsFile(SyncProcessingContext context, String contentId, StatsFile statsFile) {
+    syncProcessingContext = context;
     //backupContentAggregations.processStatsFile(context, statsFile.messageId, statsFile);
 
       try {
