@@ -1,21 +1,17 @@
 package org.literacybridge.dashboard;
-import com.google.common.collect.Lists;
+
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang.StringUtils;
-import org.literacybridge.dashboard.aggregation.StatAggregator;
 import org.literacybridge.dashboard.model.syncOperations.UpdateProcessingState;
 import org.literacybridge.dashboard.model.syncOperations.ValidationParameters;
 import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
-import org.literacybridge.stats.DataArchiver;
-import org.literacybridge.dashboard.services.SyncherService;
-import org.literacybridge.dashboard.services.UpdateRecordWriterService;
 import org.literacybridge.stats.model.DirectoryFormat;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import java.io.File;
-import java.io.InputStream;
+import java.io.*;
 
 /**
  * Wrapper class to translate commandline options into the appropriate service calls.  It is important to note that this
@@ -30,11 +26,21 @@ public class TbData2 {
   static {
     options.addOption("?", false, "Help");
     options.addOption("z", true, "Zip file to process.");
+    options.addOption("e", true, "file to write validation errors to.  If false, they will be written to stdout.");
 
     options.addOption("o", false, "Directory format is using the older format");
     options.addOption("f", false, "Force update, even if there are errors.");
     options.addOption("s", false, "Do strict format checks.");
 
+  }
+
+  public static ContentUsageUpdateProcess.UpdateUsageContext importZip(ContentUsageUpdateProcess contentUsageUpdateProcess, File zipFile, ValidationParameters validationParameters) throws Exception {
+    InputStream is = FileUtils.openInputStream(zipFile);
+    File tempDir = new File(System.getProperty("java.io.tmpdir"));
+    ContentUsageUpdateProcess.UpdateUsageContext context = contentUsageUpdateProcess.processUpdateUpload(is, tempDir, "Commandline Tool", "Non Specific", null);
+    context = contentUsageUpdateProcess.process(context, validationParameters);
+
+    return context;
   }
 
 
@@ -68,17 +74,34 @@ public class TbData2 {
     }
 
 
-    File zipFile = new File (cmd.getOptionValue("z", "."));
-    InputStream is = FileUtils.openInputStream(zipFile);
-    File  tempDir = new File(System.getProperty("java.io.tmpdir"));
-    ContentUsageUpdateProcess.UpdateUsageContext context = contentUsageUpdateProcess.processUpdateUpload(is,tempDir, "Commandline Tool", "Non Specific", null);
-    context = contentUsageUpdateProcess.process(context, validationParameters);
+    final File zipFile = new File(cmd.getOptionValue("z", "."));
+    File[] filesToProcess;
 
-    System.out.println("Imported " + ((context.getUpdateRecord().getState() == UpdateProcessingState.failed) ? "FAILED" : "SUCCEEDED"));
-    System.out.println("Imported the process with ID=" + context.getUpdateRecord().getExternalId());
-    if (!context.validationErrors.isEmpty()) {
-      System.out.println("Validation Errors:\n" + StringUtils.join(context.validationErrors, "\n"));
+    final String errorFile = cmd.getOptionValue("e");
+    OutputStream errorOut = System.out;
+    if (errorFile != null) {
+      errorOut = new FileOutputStream(errorFile);
     }
 
+
+    if (zipFile.isDirectory()) {
+      filesToProcess = zipFile.listFiles((FilenameFilter) new SuffixFileFilter("zip"));
+    } else {
+      filesToProcess = new File[]{zipFile};
+    }
+
+    for (File fileToProcess : filesToProcess) {
+      System.out.print("Importing " + fileToProcess.getName() + "...");
+      ContentUsageUpdateProcess.UpdateUsageContext context = importZip(contentUsageUpdateProcess, fileToProcess, validationParameters);
+
+      System.out.println(((context.getUpdateRecord().getState() == UpdateProcessingState.failed) ? "FAILED" : "SUCCEEDED"));
+      System.out.println("Imported the process with ID=" + context.getUpdateRecord().getExternalId());
+      if (!context.validationErrors.isEmpty()) {
+        errorOut.write(("Validation Errors:\n" + StringUtils.join(context.validationErrors, "\n")).getBytes());
+      }
+    }
+
+    errorOut.flush();
+    errorOut.close();
   }
 }
