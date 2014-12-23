@@ -279,7 +279,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
         for (EventWriter writer : writers) {
           try {
             writer.writeSurveyEvent(event);
-          } catch (IOException e) {
+          } catch (Exception e) {
             logger.error(e.getLocalizedMessage(), e);
           }
         }
