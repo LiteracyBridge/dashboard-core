@@ -91,7 +91,7 @@ public class TbData2 {
     }
 
     for (File fileToProcess : filesToProcess) {
-      System.out.print("Importing " + fileToProcess.getName() + "...");
+      System.out.println("\nImporting " + fileToProcess.getName() + "...");
       ContentUsageUpdateProcess.UpdateUsageContext context = importZip(contentUsageUpdateProcess, fileToProcess, validationParameters);
 
       System.out.println(((context.getUpdateRecord().getState() == UpdateProcessingState.failed) ? "FAILED" : "SUCCEEDED"));

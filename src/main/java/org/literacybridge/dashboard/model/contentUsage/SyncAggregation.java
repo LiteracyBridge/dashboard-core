@@ -48,7 +48,7 @@ public class SyncAggregation {
   }
 
   public void setVillage(String village) {
-    this.village = village;
+    this.village = village.toUpperCase();
   }
 
   public String getContentPackage() {

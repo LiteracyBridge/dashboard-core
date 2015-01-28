@@ -91,7 +91,7 @@ public class ContentUsageUpdateProcess {
       throws Exception {
 
     UpdateProcessingState state = context.getUpdateRecord().getState();
-    while (state != UpdateProcessingState.done && state != UpdateProcessingState.failed && state != UpdateProcessingState.uploadedToDb) {
+    while (state != UpdateProcessingState.done && state != UpdateProcessingState.failed) {
       context = processNextStep(context, validationParameters);
       state = context.getUpdateRecord().getState();
     }
@@ -114,8 +114,9 @@ public class ContentUsageUpdateProcess {
         break;
 
       case uploadedToDb:
-        throw new NotYetImplementedException("Aggregation feature is not implemented yet");
-
+        context = deleteTempFiles(context);
+        //throw new NotYetImplementedException("Aggregation feature is not implemented yet");
+        break;
       case done:
       case failed:
         //Nothing to do.
@@ -125,6 +126,19 @@ public class ContentUsageUpdateProcess {
     return context;
   }
 
+  private UpdateUsageContext deleteTempFiles(@Nonnull UpdateUsageContext context) {
+
+    File initialFile = context.tempFileMap.get(TempFileType.initialFile);
+    File explodedDir = context.tempFileMap.get(TempFileType.explodedDir);
+    initialFile.delete();
+    try {
+      FileUtils.deleteDirectory(explodedDir);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    context.getUpdateRecord().setState(UpdateProcessingState.done);
+    return context;
+  }
 
   /**
    * Validate that the zip file is valid, upload the file to S3, and write the status to the DB.
@@ -139,13 +153,15 @@ public class ContentUsageUpdateProcess {
   public UpdateUsageContext validateAndUpload(@Nonnull UpdateUsageContext context, @Nonnull ValidationParameters validationParameters)
       throws Exception {
 
+    final boolean SKIP_S3_UPLOAD = true;
     final UsageUpdateRecord updateRecord = context.getUpdateRecord();
-    final boolean       s3ObjectAlreadyExists = s3Service.doesObjectExist(s3Service.getUploadBucket(), updateRecord.getS3Id());
+    System.out.print("Checking S3 if already uploaded");
+    final boolean       s3ObjectAlreadyExists = SKIP_S3_UPLOAD?true:s3Service.doesObjectExist(s3Service.getUploadBucket(), updateRecord.getS3Id());
 
     //If this has already been updated, then this code must have already been run.  In, this case, update the
     //state and roll.
     if (s3ObjectAlreadyExists) {
-
+      System.out.println("...S3 object exists");
       //Check to see if there is an existing record, if there is, then use the existing one, and
       //update the state accordingly.  Namely, if this was an upload that caused an error, re-do it only if
       //the isForced flag is set.
@@ -154,8 +170,9 @@ public class ContentUsageUpdateProcess {
         context.setUpdateRecord(existingRecord);
 
         if (existingRecord.getState() == UpdateProcessingState.uploadedToDb ||
-            existingRecord.getState() == UpdateProcessingState.aggegated ||
-            existingRecord.getState() == UpdateProcessingState.done) {
+                existingRecord.getState() == UpdateProcessingState.aggegated ||
+                existingRecord.getState() == UpdateProcessingState.done) {
+          System.out.println("...Already uploaded");
           return context;
         }
       }
@@ -167,13 +184,17 @@ public class ContentUsageUpdateProcess {
       throw new IllegalArgumentException("Context state is invalid, because the initial download file does not exist!!!");
     }
 
+    System.out.print("Unzipping");
     List<ValidationError> validationErrors = unzipAndValidate(context, validationParameters.getFormat(), validationParameters.isStrict());
+    System.out.println("...Done unzipping");
     updateRecordBasedOnValidationErrors(updateRecord, validationErrors, validationParameters.isForce());
     context.validationErrors = validationErrors;
 
 
     if (!s3ObjectAlreadyExists) {
+      System.out.print("Uploading to S3");
       uploadInitialFileTOS3(updateRecord, initialFile);
+      System.out.println("...Done uploading to S3");
     }
 
     //
@@ -204,7 +225,33 @@ public class ContentUsageUpdateProcess {
     File explodedDir = context.createTempFile(TempFileType.explodedDir);
     FsUtils.unzip(context.tempFileMap.get(TempFileType.initialFile), explodedDir);
 
-    DirectoryIterator iterator = new DirectoryIterator(explodedDir, format, isStrict);
+/*    File[] f = explodedDir.listFiles(new FileFilter() {
+      @Override
+      public boolean accept(File pathname) {
+        if (pathname.isDirectory() && !pathname.isHidden() && !pathname.getName().startsWith("_") && !pathname.getName().startsWith(".")) // avoid folders like __MACOSX
+          return true;
+        else
+          return false;
+      }
+    });
+    if (f.length != 1) {
+      // should only be one non-hidden normal directory in the zip
+      throw new Exception ("Bad directory structure inside zip.  Should include only one directory at top level.");
+    }
+    File root;
+    if (f[0].getName().equalsIgnoreCase("collected-data")) {
+      root = f[0];
+    } else {
+      // TODO: we should capture the name of the dropbox folder that this data came from and store it in the database.
+      // This will help us analyze which laptop/tablet is getting the data.  Could tell us which staff person is gathering how much data.
+      // But for now we will just pass it by and get to collected-data.
+      root = new File(f[0],"collected-data");
+      if (!root.exists()) {
+        throw new Exception ("Bad directory structure inside zip.  There is no collected-data directory inside the top level directory.");
+      }
+    }
+    DirectoryIterator iterator = new DirectoryIterator(root, format, isStrict);
+*/  DirectoryIterator iterator = new DirectoryIterator(explodedDir, format, isStrict);
     ValidatingProcessor validatingProcessor = new ValidatingProcessor();
     iterator.process(validatingProcessor);
     return validatingProcessor.validationErrors;
@@ -264,14 +311,17 @@ public class ContentUsageUpdateProcess {
 
   public UpdateUsageContext writeUpdatesToDb(@Nonnull UpdateUsageContext context, @Nonnull ValidationParameters validationParameters) throws Exception {
 
+    long start = System.currentTimeMillis() / 1000;
     File  explodedDir = assureExplodedDir(context);
 
     FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId(), .1, Lists.newArrayList(syncherService.createSyncWriter()));
     fullSyncher.processData(explodedDir, validationParameters.getFormat(), validationParameters.isStrict());
     fullSyncher.doConsistencyCheck();
-
+    long end = System.currentTimeMillis() / 1000;
     context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
     updateRecordWriterService.write(context.getUpdateRecord());
+    long elapsedSec = end - start;
+    System.out.println("Time: " + elapsedSec + " seconds.");
     return context;
   }
 
