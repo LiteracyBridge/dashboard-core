@@ -24,7 +24,7 @@ import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
 import org.literacybridge.dashboard.model.syncOperations.UniqueTalkingBookSync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.hibernate.id.IdentifierGenerationException;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
@@ -249,6 +249,9 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
             writer.writeSurveyEvent(event);
           } catch (IOException e) {
             logger.error(e.getLocalizedMessage(), e);
+          } catch (IdentifierGenerationException e) {
+            logger.error(e.getLocalizedMessage(), e);
+            System.out.println("-------> *** HIBERNATE ERROR *** <---------");
           }
         }
       } else {
