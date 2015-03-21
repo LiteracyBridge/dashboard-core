@@ -17,8 +17,6 @@ public interface EventWriter {
 
   void writeRecordEvent(RecordEvent recordEvent) throws IOException;
 
-  void writeTBDataEvent(TBData tbDataEvent) throws IOException;
-
   void writeSurveyEvent(SurveyEvent surveyEvent) throws IOException;
 
 }
