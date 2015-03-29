@@ -1,15 +1,16 @@
 package org.literacybridge.dashboard.processors;
 
-import org.literacybridge.stats.model.events.PlayedEvent;
-import org.literacybridge.stats.model.events.RecordEvent;
-import org.literacybridge.stats.model.events.SurveyEvent;
 import org.literacybridge.dashboard.api.EventWriter;
 import org.literacybridge.dashboard.api.SyncAggregationWriter;
 import org.literacybridge.dashboard.api.SyncOperationLogWriter;
+import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
 import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
 import org.literacybridge.dashboard.model.syncOperations.SyncOperationLog;
 import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
-import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
+import org.literacybridge.stats.model.TbDataLine;
+import org.literacybridge.stats.model.events.PlayedEvent;
+import org.literacybridge.stats.model.events.RecordEvent;
+import org.literacybridge.stats.model.events.SurveyEvent;
 
 import java.io.IOException;
 
@@ -57,5 +58,10 @@ public class DbSyncWriter implements TalkingBookSyncWriter {
   @Override
   public void writeTalkingBookCorruption(TalkingBookCorruption talkingBookCorruption) throws IOException {
     syncOperationLogWriter.writeTalkingBookCorruption(talkingBookCorruption);
+  }
+
+  @Override
+  public void writeTbDataLog(TbDataLine tbDataLine) throws IOException {
+    syncOperationLogWriter.writeTbDataLog(tbDataLine);
   }
 }

@@ -1,9 +1,10 @@
 package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
+import org.literacybridge.dashboard.api.SyncOperationLogWriter;
 import org.literacybridge.dashboard.model.syncOperations.SyncOperationLog;
 import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
-import org.literacybridge.dashboard.api.SyncOperationLogWriter;
+import org.literacybridge.stats.model.TbDataLine;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,5 +31,11 @@ public class DatabaseSyncOperationLogWriterService implements SyncOperationLogWr
   @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
   public void writeTalkingBookCorruption(TalkingBookCorruption talkingBookCorruption) throws IOException {
     sessionFactory.getCurrentSession().saveOrUpdate(talkingBookCorruption);
+  }
+
+  @Override
+  @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+  public void writeTbDataLog(TbDataLine tbDataLine) throws IOException {
+    sessionFactory.getCurrentSession().saveOrUpdate(tbDataLine);
   }
 }

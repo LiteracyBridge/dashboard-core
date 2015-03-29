@@ -1,30 +1,31 @@
 package org.literacybridge.dashboard.processors;
 
 import com.google.common.collect.Lists;
-
+import org.hibernate.id.IdentifierGenerationException;
 import org.literacybridge.dashboard.aggregation.AggregationOf;
 import org.literacybridge.dashboard.aggregation.Aggregations;
 import org.literacybridge.dashboard.aggregation.UpdateAggregations;
 import org.literacybridge.dashboard.api.EventWriter;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
-import org.literacybridge.stats.model.ProcessingContext;
-import org.literacybridge.stats.model.SyncProcessingContext;
+import org.literacybridge.dashboard.model.contentUsage.ContentSyncUniqueId;
+import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
+import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
+import org.literacybridge.dashboard.model.syncOperations.UniqueTalkingBookSync;
 import org.literacybridge.stats.formats.flashData.FlashData;
 import org.literacybridge.stats.formats.flashData.NORmsgStats;
 import org.literacybridge.stats.formats.logFile.LogAction;
 import org.literacybridge.stats.formats.logFile.LogLineContext;
 import org.literacybridge.stats.formats.statsFile.StatsFile;
-import org.literacybridge.dashboard.model.contentUsage.ContentSyncUniqueId;
-import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
+import org.literacybridge.stats.model.ProcessingContext;
+import org.literacybridge.stats.model.SyncProcessingContext;
+import org.literacybridge.stats.model.TbDataLine;
 import org.literacybridge.stats.model.events.Event;
 import org.literacybridge.stats.model.events.PlayedEvent;
 import org.literacybridge.stats.model.events.RecordEvent;
 import org.literacybridge.stats.model.events.SurveyEvent;
-import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
-import org.literacybridge.dashboard.model.syncOperations.UniqueTalkingBookSync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.hibernate.id.IdentifierGenerationException;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
@@ -60,6 +61,17 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   public DbPersistenceProcessor(Collection<TalkingBookSyncWriter> writers) {
     this.writers = writers;
+  }
+
+  @Override
+  public void processTbDataLine(TbDataLine tbDataLine) {
+    for (TalkingBookSyncWriter writer : writers) {
+      try {
+        writer.writeTbDataLog(tbDataLine);
+      } catch (IOException e) {
+        logger.error(e.getLocalizedMessage(), e);
+      }
+    }
   }
 
   @Override
