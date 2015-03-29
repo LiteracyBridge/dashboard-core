@@ -49,6 +49,8 @@ public class S3Service {
 
   public boolean doesObjectExist(String bucket, String key)  {
 
+    if("skip".equals(System.getProperty("lb.S3"))) return true;
+
     final AmazonS3Client client = getClient();
 
     boolean retVal;
