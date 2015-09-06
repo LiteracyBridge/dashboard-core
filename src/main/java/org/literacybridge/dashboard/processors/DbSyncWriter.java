@@ -32,7 +32,11 @@ public class DbSyncWriter implements TalkingBookSyncWriter {
 
   @Override
   public void writePlayEvent(PlayedEvent playEvent) throws IOException {
-    eventWriter.writePlayEvent(playEvent);
+    try {
+      eventWriter.writePlayEvent(playEvent);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   @Override
