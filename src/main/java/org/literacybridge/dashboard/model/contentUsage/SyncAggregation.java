@@ -56,7 +56,7 @@ public class SyncAggregation {
   }
 
   public void setContentPackage(String contentPackage) {
-    this.contentPackage = contentPackage;
+    this.contentPackage = contentPackage.toUpperCase();
   }
 
   public int getCountStarted() {

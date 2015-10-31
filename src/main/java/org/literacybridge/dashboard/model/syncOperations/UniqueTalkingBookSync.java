@@ -19,7 +19,7 @@ public class UniqueTalkingBookSync implements Serializable {
   }
 
   public void setContentUpdate(String contentUpdate) {
-    this.contentUpdate = contentUpdate;
+    this.contentUpdate = contentUpdate.toUpperCase();
   }
 
   public String getTalkingBook() {
@@ -27,7 +27,7 @@ public class UniqueTalkingBookSync implements Serializable {
   }
 
   public void setTalkingBook(String talkingBook) {
-    this.talkingBook = talkingBook;
+    this.talkingBook = talkingBook.toUpperCase();
   }
 
   public String getVillage() {
