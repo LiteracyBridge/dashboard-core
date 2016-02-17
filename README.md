@@ -28,8 +28,8 @@ will build the project cleanly and run all the unit tests.
 
 Since, the dashboard-core needs to talk to S3, databases and potentially other services, it has a [built-in configuration mechanism](https://github.com/LiteracyBridge/dashboard-core/blob/master/src/main/java/org/literacybridge/dashboard/config/PropertiesConfig.java) to look up this configuration.  It will look for a properties file in the following locations:
 
-1.  /opt/literacybridge/dashboard.properties
-2.  ./dashboard.properties
+1.  ./dashboard.properties
+2.  /opt/literacybridge/dashboard.properties
 3.  otherwise it will default to the values in spring/default.properties file, located in src/main/resources/spring
 
 To get the full list of properties, look in [src/main/resources/spring/default.properties](https://github.com/LiteracyBridge/dashboard-core/blob/master/src/main/resources/spring/default.properties)

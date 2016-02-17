@@ -31,8 +31,8 @@ public class PropertiesConfig {
     propertyPlaceholderConfigurer.setIgnoreResourceNotFound(true);
     propertyPlaceholderConfigurer.setLocations(new Resource[]{
         new ClassPathResource("spring/default.properties"),
-        new FileSystemResource(FsAgnostify("./dashboard.properties")),
-        new FileSystemResource(FsAgnostify("/opt/literacybridge/dashboard.properties"))
+        new FileSystemResource(FsAgnostify("/opt/literacybridge/dashboard.properties")),
+        new FileSystemResource(FsAgnostify("./dashboard.properties"))
     });
 
     // Allow for other PropertyPlaceholderConfigurer instances.
