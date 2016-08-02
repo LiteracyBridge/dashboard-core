@@ -1,6 +1,7 @@
 .DS_Store
 dashboard_core.log
-target/
-core.iml
-.idea/
 dashboard.properties*
+core.iml
+core-api.iml
+target
+.idea/
