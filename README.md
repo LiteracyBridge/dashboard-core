@@ -1,22 +1,18 @@
 dashboard-core
 ==============
-The business logic behind the dashboard.  This contains no UI, nor REST apis, however, does contain all the processes that happen below that.
-
+Contains the logic of reading the various files created by the Talking Book and TB-Loader,
+and populating a PostgreSQL database.
 
 
 ## Building and Artifacts ##
 
 ### Prerequisites ###
 
-**Java 7**
-:  This project required Java 7.  Make sure you have it installed and the default JVM.
+**Java 8**
+:  This project requires Java 8.  Make sure you have it installed and the default JVM.
 
 **Maven**
 : This project currently uses Maven for building.  Make sure you have maven installed.  If you don't you can get one at http://maven.apache.org/download.cgi
-
-**Core Api**
-: This project depends on another Literacy Bridge project that contains code to handle all the file formats.  Get this project from https://github.com/willpugh/lb-core-api and build per the directions.
-
 
 ### Building ###
 
