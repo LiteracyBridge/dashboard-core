@@ -69,12 +69,12 @@ public class StatsFile {
 
       StatsFile retVal = new StatsFile(SRN,
         msgId,
-        byteBuffer.getInt(),
-        byteBuffer.getInt(),
-        byteBuffer.getInt(),
-        byteBuffer.getInt(),
-        byteBuffer.getInt(),
-        byteBuffer.getInt());
+        byteBuffer.getInt(),        // open count
+        byteBuffer.getInt(),        // completion count
+        byteBuffer.getInt(),        // copy count
+        byteBuffer.getInt(),        // survey count
+        byteBuffer.getInt(),        // applied count
+        byteBuffer.getInt());       // useless count
 
       if (retVal.openCount + retVal.surveyCount + retVal.appliedCount + retVal.uselessCount > 1000) {
         throw new CorruptFileException("Counts in the stats file seem too high to be realistic. . .");
