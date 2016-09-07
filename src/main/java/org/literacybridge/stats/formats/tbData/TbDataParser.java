@@ -222,6 +222,7 @@ public class TbDataParser {
       Class type = setter.getParameterTypes()[0];
       if (type.equals(Date.class)) {
         try {
+          // TODO: we need to fix this.
           setter.invoke(line, new Date(lineValues.get(propertyName)));
         } catch (IllegalArgumentException e) {
           logger.error("Invalid date value " + lineValues.get(propertyName) + ".  Ignoring field " + propertyName + ".");

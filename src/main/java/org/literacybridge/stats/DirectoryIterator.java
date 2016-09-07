@@ -26,7 +26,8 @@ import java.util.zip.ZipException;
  * This class is responsible for navigating the directory structure in a Stats Update Package.
  */
 public class DirectoryIterator {
-  public static final Pattern UPDATE_PATTERN = Pattern.compile("(\\d+)-(\\w+)");
+  // groups of letters and numbers separated by dashes
+  public static final Pattern UPDATE_PATTERN = Pattern.compile("(\\w+-?)+");
   public static final Pattern TBDATA_PATTERN = Pattern.compile("tbData-(\\d+)-(\\d+)-(\\d+).*", Pattern.CASE_INSENSITIVE);
   public static final Pattern SYNC_TIME_PATTERN_V1 = Pattern.compile("(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s", Pattern.CASE_INSENSITIVE);
   public static final Pattern SYNC_TIME_PATTERN_V2 = Pattern.compile("(\\d+)y(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s-(.*)", Pattern.CASE_INSENSITIVE);
@@ -356,7 +357,7 @@ public class DirectoryIterator {
       if (talkingBookData.exists()) {  // in some cases, there may just be an OperationalData dir but no TalkingBookData
         for (File deploymentDir : talkingBookData.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
           if (UPDATE_PATTERN.matcher(deploymentDir.getName()).matches() ||
-            "UNKNOWN".equalsIgnoreCase(deploymentDir.getName())) {
+            deploymentDir.getName().equalsIgnoreCase("UNKNOWN")) {
             for (File device : deploymentDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
               retVal.add(new DeploymentPerDevice(deploymentDir.getName(), device.getName()));
             }

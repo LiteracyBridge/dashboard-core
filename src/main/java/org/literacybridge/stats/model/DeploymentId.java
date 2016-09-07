@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  */
 public class DeploymentId {
 
-  public static final Pattern DEPLOYMENT_ID_PATTERN = Pattern.compile("(\\d+)-(\\d+)(\\D*)");
+  private static final Pattern DEPLOYMENT_ID_PATTERN = Pattern.compile("(\\D*-?)(\\d+)-(?:(?:\\D*-)*)(\\d+)(\\D*)");
 
   public final short year;
   public final short update;
@@ -37,15 +37,26 @@ public class DeploymentId {
     this.id = id;
   }
 
+  /**
+   * Parse a deployment name. Although this is strictly incorrect, for historical
+   * reasons we attempt to extract a year and update from it.
+   * @param contentUpdate
+   * @return
+   */
   static public DeploymentId parseContentUpdate(String contentUpdate) {
     final Matcher matcher = DEPLOYMENT_ID_PATTERN.matcher(contentUpdate);
     if (!matcher.matches()) {
       return new DeploymentId((short) 0, (short) 0, null, contentUpdate);
     }
 
-    return new DeploymentId(Short.parseShort(matcher.group(1)), Short.parseShort(matcher.group(2)), matcher.group(3), contentUpdate);
+    return new DeploymentId(Short.parseShort(matcher.group(2)), Short.parseShort(matcher.group(3)), matcher.group(4), contentUpdate);
   }
 
+  /**
+   * TODO: This is broken. It assumes that deployments restart at "1" in January, which
+   * may have been correct at one time, but is not any longer.
+   * @return
+   */
   public DeploymentId guessPrevious() {
     if (update > 1) {
       return new DeploymentId(year, (short) (update - 1), flavor, String.format("%04d-%02d%s", year, (update - (short) 1), flavor));

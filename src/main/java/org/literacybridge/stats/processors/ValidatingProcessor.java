@@ -99,7 +99,7 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
     LocalDateTime localDateTime = syncDirId.dateTime;
     if (localDateTime != null) {
 
-      if ("update".equalsIgnoreCase(line.getAction())) {
+      if (line.getAction().equalsIgnoreCase("update") || line.getAction().equalsIgnoreCase("stats-only")) {
         OperationalInfo operationalInfo = new OperationalInfo(currOperationalDevice, syncDirName, localDateTime,
           inTalkingBook, outTalkingBook,
           currDeploymentId.id, line.getOutDeployment(), line.getInCommunity(), line.getOutCommunity());
