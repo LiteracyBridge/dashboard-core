@@ -102,6 +102,7 @@ public class TbDataLine implements Serializable {
   public void setOutSyncDir(String outSyncDir) {
     this.outSyncDir = outSyncDir;
   }
+  public void setOutSynchDir(String outSynchDir) { this.setOutSyncDir(outSynchDir); }
 
   public String getLocation() {
     return location;
@@ -228,8 +229,11 @@ public class TbDataLine implements Serializable {
   }
 
   public void setInSyncDir(String inSyncDir) {
-    this.inSyncDir = inSyncDir;
-  }
+        this.inSyncDir = inSyncDir;
+    }
+  public void setInSynchDir(String inSynchDir) {
+        this.setInSyncDir(inSynchDir);
+    }
 
   public String getInDiskLabel() {
     return inDiskLabel;

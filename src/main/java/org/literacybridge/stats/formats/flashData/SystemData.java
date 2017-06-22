@@ -69,9 +69,9 @@ public class SystemData {
   public boolean isValid(Collection<String> errors) {
 
     return FlashData.doValidate(StringUtils.isNotEmpty(serialNumber), errors, "serialNumber is empty.") &&
-      FlashData.doValidate(StringUtils.isEmpty(updateNumber), errors, "updateNumber is empty.") &&
-      FlashData.doValidate(StringUtils.isEmpty(location), errors, "location is empty.") &&
-      FlashData.doValidate(StringUtils.isEmpty(contentPackage), errors, "contentPackage is empty.");
+      FlashData.doValidate(StringUtils.isNotEmpty(updateNumber), errors, "updateNumber is empty.") &&
+      FlashData.doValidate(StringUtils.isNotEmpty(location), errors, "location is empty.") &&
+      FlashData.doValidate(StringUtils.isNotEmpty(contentPackage), errors, "contentPackage is empty.");
   }
 
   /**

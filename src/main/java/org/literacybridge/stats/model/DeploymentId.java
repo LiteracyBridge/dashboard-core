@@ -26,10 +26,18 @@ public class DeploymentId {
   @Nonnull
   public final String id;
 
+  public DeploymentId(@Nonnull String id) {
+      this.year = this.update = 0;
+      this.flavor = "";
+      this.id = id;
+  }
+
+  @Deprecated
   public DeploymentId(short year, short update, @Nonnull String id) {
     this(year, update, null, id);
   }
 
+  @Deprecated
   public DeploymentId(short year, short update, @Nullable String flavor, @Nonnull String id) {
     this.year = year;
     this.update = update;
@@ -46,7 +54,7 @@ public class DeploymentId {
   static public DeploymentId parseContentUpdate(String contentUpdate) {
     final Matcher matcher = DEPLOYMENT_ID_PATTERN.matcher(contentUpdate);
     if (!matcher.matches()) {
-      return new DeploymentId((short) 0, (short) 0, null, contentUpdate);
+      return new DeploymentId(contentUpdate);
     }
 
     return new DeploymentId(Short.parseShort(matcher.group(2)), Short.parseShort(matcher.group(3)), matcher.group(4), contentUpdate);
@@ -57,6 +65,7 @@ public class DeploymentId {
    * may have been correct at one time, but is not any longer.
    * @return
    */
+  @Deprecated
   public DeploymentId guessPrevious() {
     if (update > 1) {
       return new DeploymentId(year, (short) (update - 1), flavor, String.format("%04d-%02d%s", year, (update - (short) 1), flavor));

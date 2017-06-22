@@ -1,6 +1,7 @@
 package org.literacybridge.stats.processors;
 
 import org.joda.time.LocalDateTime;
+import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.stats.model.DirectoryFormat;
 import org.literacybridge.stats.model.StatsPackageManifest;
 import org.literacybridge.stats.model.SyncDirId;
@@ -19,7 +20,11 @@ public class ManifestCreationCallbacks extends AbstractDirectoryProcessor {
   Map<String, LocalDateTime> latestSyncs = new HashMap<>();
   Map<String, LocalDateTime> earliestSyncs = new HashMap<>();
 
-  @Override
+    public ManifestCreationCallbacks(ProcessingResult result) {
+        super(result);
+    }
+
+    @Override
   public boolean startDeviceOperationalData(String device) {
     return false;
   }

@@ -17,7 +17,7 @@ public class NonMatchingTbDataEntry {
 
   @Override
   public String toString() {
-    return "NonMatchingTbDataEntry{" +
+    return "OperationalDataEntryWithoutTalkingBookDataDirectory{" +
       "syncDirId=" + syncDirId +
       ",\noperationalInfo=" + operationalInfo +
       '}';

@@ -32,4 +32,14 @@ public class LogFilePosition {
     result = 31 * result + lineNumber;
     return result;
   }
+
+  public String loggingFileName() {
+      String [] parts = fileName.split("/");
+      StringBuilder sb = new StringBuilder();
+      for (int ix=parts.length-9; ix<parts.length; ix++) {
+          if (sb.length()>0) { sb.append('/'); }
+          sb.append(parts[ix]);
+      }
+      return sb.toString();
+  }
 }

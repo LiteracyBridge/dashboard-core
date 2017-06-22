@@ -5,6 +5,7 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.*;
 import org.literacybridge.stats.processors.ManifestCreationCallbacks;
@@ -47,10 +48,13 @@ public class DirectoryIterator {
   public final File[] rootFiles;
   public DirectoryFormat format;
 
-  public DirectoryIterator(File root, DirectoryFormat format, boolean strict) {
+  private ProcessingResult result;
+
+  public DirectoryIterator(File root, DirectoryFormat format, boolean strict, ProcessingResult result) {
     this.rootFiles = rootInFunnyZip(root);
     this.strict = strict;
     this.format = format;
+    this.result = result;
   }
 
   /**
@@ -124,11 +128,27 @@ public class DirectoryIterator {
         }
       });
     }
-    System.out.println("   Size:" + (int) (FileUtils.sizeOfDirectory(root) >> 20) + "MB" + "  Start Time:" + System.currentTimeMillis() / 1000);
+    System.out.println(String.format("   Size: %s, Start Time: %d", getBytesString(FileUtils.sizeOfDirectory(root)), System.currentTimeMillis() / 1000));
     return processingRoots;
   }
 
-  public static File getManifestFile(File root) {
+    public static String getBytesString(long bytes) {
+        String[] quantifiers = new String[] {
+                "KiB", "MiB", "GiB", "TiB"
+        };
+        double sizeNum = bytes;
+        for (int i = 0;; i++) {
+            if (i >= quantifiers.length) {
+                return "Too Much";
+            }
+            sizeNum /= 1024;
+            if (sizeNum <= 999) {
+                return String.format("%.2f %s", sizeNum, quantifiers[i]);
+            }
+        }
+    }
+
+    public static File getManifestFile(File root) {
     return new File(root, MANIFEST_FILE_NAME);
   }
 
@@ -176,6 +196,7 @@ public class DirectoryIterator {
 
   public void process(DirectoryCallbacks callbacks) throws Exception {
     for (File currRoot : rootFiles) {
+      logger.debug(String.format("project: %s", currRoot.getName()));
       process(currRoot, callbacks);
     }
   }
@@ -204,9 +225,13 @@ public class DirectoryIterator {
   public StatsPackageManifest generateManifest(File root, DirectoryFormat format) throws Exception {
     this.format = format;
 
-    ManifestCreationCallbacks manifestCreationCallbacks = new ManifestCreationCallbacks();
+    logger.debug(String.format("Generating manifest"));
+    ManifestCreationCallbacks manifestCreationCallbacks = new ManifestCreationCallbacks(result);
     process(root, null, manifestCreationCallbacks);
-    return manifestCreationCallbacks.generateManifest(format);
+    StatsPackageManifest result = manifestCreationCallbacks.generateManifest(format);
+    logger.debug("---------"); //
+    logger.debug(String.format("Continue with generated manifest: %s", root.getName()));
+    return result;
   }
 
   public void process(@Nonnull File root, @Nullable StatsPackageManifest manifest, @Nonnull DirectoryCallbacks callbacks) throws Exception {
@@ -225,6 +250,7 @@ public class DirectoryIterator {
         boolean processDevice = false;
 
         for (DeploymentPerDevice deploymentPerDevice : deploymentPerDevices) {
+          logger.debug(String.format("  device: %s, deployment: %s", deploymentPerDevice.device, deploymentPerDevice.deployment));
           if (!deploymentPerDevice.device.equalsIgnoreCase(currDevice)) {
 
             if (processDevice) {
@@ -256,6 +282,7 @@ public class DirectoryIterator {
                 }
               } else {
                 for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(TBDATA_PATTERN_V2))) {
+                  logger.debug(String.format("    operational data: %s", potential.getName()));
                   callbacks.processTbDataFile(potential, true);
                 }
               }
@@ -278,7 +305,7 @@ public class DirectoryIterator {
         }
 
         if (callbacks.startDeviceDeployment(deploymentPerDevice)) {
-          processDeviceDeployment(deploymentId, deploymentPerDevice.getRoot(root, format), callbacks);
+          processDeviceDeployment(root, deploymentPerDevice.device, deploymentId, deploymentPerDevice.getRoot(root, format), callbacks);
           callbacks.endDeviceDeployment();
         }
       }
@@ -286,29 +313,33 @@ public class DirectoryIterator {
     }
   }
 
-  public void processDeviceDeployment(DeploymentId deploymentId, File deviceDeploymentDir, DirectoryCallbacks callbacks) throws Exception {
+  public void processDeviceDeployment(File root, String device, DeploymentId deploymentId, File deviceDeploymentDir, DirectoryCallbacks callbacks) throws Exception {
+    logger.debug(String.format("    device: %s, deployment: %s", deviceDeploymentDir.getName(), deploymentId));
     System.out.println(" " + deploymentId.toString());
-    for (File village : deviceDeploymentDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
-      if (callbacks.startVillage(village.getName().trim())) {
-        System.out.println("   " + village.getName());
-        processVillage(deploymentId, village, callbacks);
+    for (File villageDir : deviceDeploymentDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
+      if (callbacks.startVillage(villageDir.getName().trim())) {
+        System.out.println("   " + villageDir.getName());
+        processVillage(root, device, deploymentId, villageDir, callbacks);
         callbacks.endVillage();
       }
     }
   }
 
-  public void processVillage(DeploymentId deploymentId, File villageDir, DirectoryCallbacks callbacks) throws Exception {
-    for (File talkingBook : villageDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
-      if (callbacks.startTalkingBook(talkingBook.getName().trim())) {
-        System.out.println("     " + talkingBook.getName().trim());
-        processTalkingBook(deploymentId, talkingBook, callbacks);
+  public void processVillage(File root, String device, DeploymentId deploymentId, File villageDir,
+                             DirectoryCallbacks callbacks) throws Exception {
+    logger.debug(String.format("      village: %s", villageDir.getName()));
+    for (File talkingBookDir : villageDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
+      if (callbacks.startTalkingBook(talkingBookDir.getName().trim())) {
+        System.out.println("     " + talkingBookDir.getName().trim());
+        processTalkingBook(root, device, deploymentId, villageDir.getName(), talkingBookDir, callbacks);
         callbacks.endTalkingBook();
       }
     }
   }
 
-  public void processTalkingBook(DeploymentId deploymentId, File talkingBookDir, DirectoryCallbacks callbacks) throws Exception {
-
+  public void processTalkingBook(File root, String device, DeploymentId deploymentId, String village, File talkingBookDir,
+                                 DirectoryCallbacks callbacks) throws Exception {
+    logger.debug(String.format("        tb: %s", talkingBookDir.getName()));
     FileFilter fileFilter = new WildcardFileFilter("*.zip");
     File[] files = talkingBookDir.listFiles(fileFilter);
     for (File syncZip : files) {
@@ -320,12 +351,13 @@ public class DirectoryIterator {
       try {
         FsUtils.unzip(syncZip, talkingBookDir);
       } catch (ZipException e) {
+          result.addCorruptedTalkingBookZip(root.getName(), device, deploymentId.id, village, talkingBookDir.getName(), syncZip.getName());
         logger.error("Couldn't unzip synchdir " + syncZip.getName() + "(" + e.getMessage() + ")");
       }
       syncZip.delete();
     }
-    for (File syncDir : talkingBookDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
 
+    for (File syncDir : talkingBookDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
       SyncDirId syncDirId = SyncDirId.parseSyncDir(deploymentId, syncDir.getName().trim());
       if (syncDirId.dateTime != null) {
         if (format == DirectoryFormat.Archive && syncDirId.version == 1 && strict) {

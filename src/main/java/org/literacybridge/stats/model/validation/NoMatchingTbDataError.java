@@ -16,7 +16,7 @@ public class NoMatchingTbDataError extends ValidationError {
         syncDirName,
         filePath.getPath());
     } else {
-      return String.format("No matching TBData entry for %s.  For v2 directories, this MUST be an exact match of the syncDirName.  Full path is: %s",
+      return String.format("Directory in TalkingBookData with no matching entry in OperationalData: %s. Full path: %s",
         syncDirName,
         filePath.getPath());
     }

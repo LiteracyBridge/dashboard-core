@@ -18,7 +18,7 @@ import java.util.*;
  * Parses a tbData file.  Does some work to try to work for older formats.
  */
 public class TbDataParser {
-
+  private static final Set<String> missingPropertySetters = new HashSet<>();
 
   protected static final Logger logger = LoggerFactory.getLogger(TbDataParser.class);
 
@@ -215,17 +215,27 @@ public class TbDataParser {
       }
 
       if (setter == null) {
-        logger.warn("No setter for " + javaSetterName);
+        // Don't warn for every freaking instance of the property.
+        if (!missingPropertySetters.contains(javaSetterName)) {
+            missingPropertySetters.add(javaSetterName);
+            logger.warn("No setter for " + javaSetterName);
+        }
         return;
       }
 
       Class type = setter.getParameterTypes()[0];
+      String value = null;
       if (type.equals(Date.class)) {
         try {
+          value = lineValues.get(propertyName);
           // TODO: we need to fix this.
-          setter.invoke(line, new Date(lineValues.get(propertyName)));
+          setter.invoke(line, new Date(value));
         } catch (IllegalArgumentException e) {
-          logger.error("Invalid date value " + lineValues.get(propertyName) + ".  Ignoring field " + propertyName + ".");
+          // Don't log for empty strings. That's just "no value".
+          if (value == null || value.length()>0) {
+              logger.error(
+                      "Invalid date value " + lineValues.get(propertyName) + ".  Ignoring field " + propertyName + ".");
+          }
         }
       } else if (type.equals(int.class) || type.equals(Integer.TYPE)) {
         try {

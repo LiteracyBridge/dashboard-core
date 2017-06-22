@@ -8,6 +8,7 @@ import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang.StringUtils;
+import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.stats.api.TalkingBookDataProcessor;
 import org.literacybridge.stats.formats.exceptions.CorruptFileException;
 import org.literacybridge.stats.formats.flashData.FlashData;
@@ -54,22 +55,25 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
   private ProcessingContext currProcessingContext;
   private Set<String> processedLogFiles = new HashSet<>();
 
-  public DirectoryProcessor(TalkingBookDataProcessor dataProcessorEventListeners, Map<String, String> categoryMap) {
+  public DirectoryProcessor(TalkingBookDataProcessor dataProcessorEventListeners, Map<String, String> categoryMap,
+                            ProcessingResult result) {
+      super(result);
     this.dataProcessorEventListeners = Lists.newArrayList(dataProcessorEventListeners);
     this.categoryMap = categoryMap;
   }
 
 
   public DirectoryProcessor(List<TalkingBookDataProcessor> dataProcessorEventListeners,
-                            Map<String, String> categoryMap) {
+                            Map<String, String> categoryMap, ProcessingResult result) {
+      super(result);
     this.dataProcessorEventListeners = dataProcessorEventListeners;
     this.categoryMap = categoryMap;
   }
 
-  static public void runCallbacksOnLogFile(File file, LogFileParser parser) throws IOException {
+  static public int runCallbacksOnLogFile(File file, LogFileParser parser) throws IOException {
     FileInputStream fis = new FileInputStream(file);
     try {
-      parser.parse(file.getAbsolutePath(), fis);
+      return parser.parse(file.getAbsolutePath(), fis);
     } finally {
       IOUtils.closeQuietly(fis);
     }
@@ -260,7 +264,9 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
   public void processSyncDir(final File syncDir, final SyncProcessingContext syncProcessingContext,
                              final Set<String> processedFiles, final boolean processInProcessLog) throws
     IOException {
-
+    int numLogFiles = 0;
+    int numLogFilesWithErrors = 0;
+    int numLogFileErrors = 0;
 
     //Create a list of LogFileParsers that take the callback interfaces and the syncProcessingContexts.
     LogFileParser parser = new LogFileParser(dataProcessorEventListeners, syncProcessingContext, categoryMap);
@@ -269,7 +275,9 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
     if (processInProcessLog) {
       final File logFile = new File(new File(syncDir, "log"), "log.txt");
       if (logFile.canRead()) {
-        processLogFile(logFile, parser, processedFiles);
+          numLogFiles++;
+          numLogFileErrors += processLogFile(logFile, parser, processedFiles);
+          if (numLogFileErrors > 0) numLogFilesWithErrors++;
       }
     }
 
@@ -281,9 +289,15 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
         FalseFileFilter.FALSE);
       while (archivedLogFiles.hasNext()) {
         final File archivedFile = archivedLogFiles.next();
-        processLogFile(archivedFile, parser, processedFiles);
+        int numErrors = processLogFile(archivedFile, parser, processedFiles);
+        numLogFiles++;
+        if (numErrors > 0) numLogFilesWithErrors++;
+        numLogFileErrors += numErrors;
       }
     }
+      result.addCountLogFiles(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook, numLogFiles);
+      result.addCountLogFilesWithErrors(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook, numLogFilesWithErrors);
+      result.addCountLogFileErrors(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook, numLogFileErrors);
 
     //Process all the Stats files
     final File statDir = new File(syncDir, "statistics");
@@ -301,27 +315,31 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
           runCallbacksOnStatsFile(syncProcessingContext, statsFiles.next());
         }
       } else {
+          result.addCorruptStatisticsDir(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook);
         logger.error(statDir.getAbsolutePath() + " is NOT a directory.");
       }
     } else {
+        result.addCorruptStatisticsDir(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook);
       logger.error("Cannot read " + statDir.getAbsolutePath());
     }
   }
 
-  public void processLogFile(File file, LogFileParser parser, Set<String> processedFiles) {
-
+  public int processLogFile(File file, LogFileParser parser, Set<String> processedFiles) {
+    int numErrors = 0;
     final String fileProcessingName = file.getParent() + "/" + file.getName();
+    // TODO: Does this do anything?
     if (!processedFiles.contains(fileProcessingName)) {
       try {
-        runCallbacksOnLogFile(file, parser);
+        numErrors = runCallbacksOnLogFile(file, parser);
         processedFiles.add(fileProcessingName);
       } catch (IOException ioe) {
         final String errorString = String.format("Unable to process %s.  Error=%s", file.getAbsolutePath(),
           ioe.getMessage());
         logger.error(errorString, ioe);
+        numErrors = 1; // the whole file...
       }
-
     }
+    return numErrors;
   }
 
   public void runCallbacksOnStatsFile(final SyncProcessingContext syncProcessingContext, final File file) {

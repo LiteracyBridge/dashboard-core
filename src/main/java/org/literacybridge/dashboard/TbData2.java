@@ -1,6 +1,10 @@
 package org.literacybridge.dashboard;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.PosixParser;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang.StringUtils;
@@ -11,7 +15,11 @@ import org.literacybridge.stats.model.DirectoryFormat;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FilenameFilter;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * Wrapper class to translate commandline options into the appropriate service calls.  It is important to note that this
@@ -19,6 +27,18 @@ import java.io.*;
  * talk to REST interfaces, however, that doesn't exist yet. . .
  */
 public class TbData2 {
+    /**
+     * Turn down the Hibernate and Spring noise...
+     * Despite what you may find on the internet, the Hibernate and Spring logging, at
+     * least the version we're using, log directly to java.util.logging. So, we use
+     * java.util.logging to control it.
+      */
+    static {
+        java.util.logging.Logger logger = java.util.logging.Logger.getGlobal();
+        logger.setLevel(java.util.logging.Level.WARNING);
+    }
+
+
 
   // create Options object
   public static final Options options = new Options();
@@ -27,6 +47,7 @@ public class TbData2 {
     options.addOption("?", false, "Help");
     options.addOption("z", true, "Zip file to process.");
     options.addOption("e", true, "file to write validation errors to.  If false, they will be written to stdout.");
+    options.addOption("r", true, "File to receive a report. If named '*.html', will be formatted HTML.");
 
     options.addOption("o", false, "Directory format is using the older format");
     options.addOption("f", false, "Force update, even if there are errors.");
@@ -34,10 +55,12 @@ public class TbData2 {
 
   }
 
-  public static ContentUsageUpdateProcess.UpdateUsageContext importZip(ContentUsageUpdateProcess contentUsageUpdateProcess, File zipFile, ValidationParameters validationParameters) throws Exception {
+  public static ContentUsageUpdateProcess.UpdateUsageContext importZip(ContentUsageUpdateProcess contentUsageUpdateProcess, File zipFile,
+                                                                       ValidationParameters validationParameters,
+                                                                       ProcessingResult result) throws Exception {
     InputStream is = FileUtils.openInputStream(zipFile);
     File tempDir = new File(System.getProperty("java.io.tmpdir"));
-    ContentUsageUpdateProcess.UpdateUsageContext context = contentUsageUpdateProcess.processUpdateUpload(is, tempDir, "Commandline Tool", "Non Specific", null);
+    ContentUsageUpdateProcess.UpdateUsageContext context = contentUsageUpdateProcess.processUpdateUpload(is, tempDir, "Commandline Tool", "Non Specific", null, result);
     context = contentUsageUpdateProcess.process(context, validationParameters);
 
     return context;
@@ -91,13 +114,19 @@ public class TbData2 {
     }
 
     for (File fileToProcess : filesToProcess) {
+      ProcessingResult result = new ProcessingResult(zipFile.getName(), fileToProcess.getName());
       System.out.println("\nImporting " + fileToProcess.getName() + "...");
-      ContentUsageUpdateProcess.UpdateUsageContext context = importZip(contentUsageUpdateProcess, fileToProcess, validationParameters);
+      ContentUsageUpdateProcess.UpdateUsageContext context = importZip(contentUsageUpdateProcess, fileToProcess, validationParameters, result);
 
       System.out.println(((context.getUpdateRecord().getState() == UpdateProcessingState.failed) ? "FAILED" : "SUCCEEDED"));
       System.out.println("Imported the process with ID=" + context.getUpdateRecord().getExternalId());
       if (!context.validationErrors.isEmpty()) {
         errorOut.write(("Validation Errors:\n" + StringUtils.join(context.validationErrors, "\n")).getBytes());
+      }
+      if (cmd.hasOption("r")) {
+          result.report(new File(cmd.getOptionValue("r")));
+      } else {
+          result.report(System.out);
       }
     }
 

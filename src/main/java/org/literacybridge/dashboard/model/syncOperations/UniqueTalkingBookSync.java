@@ -26,7 +26,31 @@ public class UniqueTalkingBookSync implements Serializable {
     return talkingBook;
   }
 
-  public void setTalkingBook(String talkingBook) {
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        UniqueTalkingBookSync that = (UniqueTalkingBookSync) o;
+
+        if (!contentUpdate.equals(that.contentUpdate))
+            return false;
+        if (!talkingBook.equals(that.talkingBook))
+            return false;
+        return village.equals(that.village);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = contentUpdate.hashCode();
+        result = 31 * result + talkingBook.hashCode();
+        result = 31 * result + village.hashCode();
+        return result;
+    }
+
+    public void setTalkingBook(String talkingBook) {
     this.talkingBook = talkingBook.toUpperCase();
   }
 

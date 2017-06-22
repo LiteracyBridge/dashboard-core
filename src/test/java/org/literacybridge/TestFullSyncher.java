@@ -6,6 +6,7 @@ import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.literacybridge.dashboard.FullSyncher;
+import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.dashboard.aggregation.StatAggregator;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
 import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
@@ -25,6 +26,7 @@ public class TestFullSyncher {
 
   @Test
   public void testSyncherWrongDir() throws Exception {
+      ProcessingResult result = new ProcessingResult("test", "test.zip");
     final File invalidDir = SyncRoot;
 
     final TalkingBookSyncWriter eventWriter = EasyMock.createMock(TalkingBookSyncWriter.class);
@@ -32,7 +34,7 @@ public class TestFullSyncher {
     eventWriter.writeOperationLog(EasyMock.anyObject(SyncOperationLog.class));
     EasyMock.replay(eventWriter);
 
-    FullSyncher syncher = new FullSyncher(0, .1, Lists.newArrayList(eventWriter));
+    FullSyncher syncher = new FullSyncher(0, .1, Lists.newArrayList(eventWriter), result);
     try {
       syncher.processData(invalidDir);
       TestCase.fail("processData should fail, since the fir is empty");

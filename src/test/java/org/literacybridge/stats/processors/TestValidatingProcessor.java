@@ -4,6 +4,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import junit.framework.TestCase;
 import org.junit.Test;
+import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.stats.DirectoryIterator;
 import org.literacybridge.stats.TestDirectoryIterator;
 import org.literacybridge.stats.model.DirectoryFormat;
@@ -25,9 +26,10 @@ public class TestValidatingProcessor {
 
   //@Test
   public void testValidArchiveNoManifest() throws Exception {
-    ValidatingProcessor validatingProcessor = new ValidatingProcessor();
+      ProcessingResult result = new ProcessingResult("test", "test.zip");
+    ValidatingProcessor validatingProcessor = new ValidatingProcessor(result);
     DirectoryIterator directoryIterator = new DirectoryIterator(TestDirectoryIterator.TEST1_ARCHIVE,
-      DirectoryFormat.Archive, false);
+      DirectoryFormat.Archive, false, result);
 
     directoryIterator.process(validatingProcessor);
     TestCase.assertEquals("10 Archive files are expected without a manifest", 10, validatingProcessor.validationErrors.size());
@@ -45,8 +47,9 @@ public class TestValidatingProcessor {
 
   //@Test
   public void testValidSyncNoManifest() throws Exception {
-    ValidatingProcessor validatingProcessor = new ValidatingProcessor();
-    DirectoryIterator directoryIterator = new DirectoryIterator(TestDirectoryIterator.TEST1_SYNC, DirectoryFormat.Sync, false);
+      ProcessingResult result = new ProcessingResult("test", "test.zip");
+      ValidatingProcessor validatingProcessor = new ValidatingProcessor(result);
+    DirectoryIterator directoryIterator = new DirectoryIterator(TestDirectoryIterator.TEST1_SYNC, DirectoryFormat.Sync, false, result);
 
     directoryIterator.process(validatingProcessor);
     TestCase.assertEquals("10 Sync files are expected without a manifest", 10, validatingProcessor.validationErrors.size());
@@ -54,8 +57,9 @@ public class TestValidatingProcessor {
 
   @Test
   public void testV2WithManyErrors() throws Exception {
-    ValidatingProcessor validatingProcessor = new ValidatingProcessor();
-    DirectoryIterator directoryIterator = new DirectoryIterator(ERROR_TEST1_ARCHIVE, null, true);
+      ProcessingResult result = new ProcessingResult("test", "test.zip");
+      ValidatingProcessor validatingProcessor = new ValidatingProcessor(result);
+    DirectoryIterator directoryIterator = new DirectoryIterator(ERROR_TEST1_ARCHIVE, null, true, result);
 
     directoryIterator.process(validatingProcessor);
     TestCase.assertEquals(7, validatingProcessor.validationErrors.size());
@@ -96,8 +100,9 @@ public class TestValidatingProcessor {
 
   @Test
   public void testV1WithManyErrors() throws Exception {
-    ValidatingProcessor validatingProcessor = new ValidatingProcessor();
-    DirectoryIterator directoryIterator = new DirectoryIterator(ERROR_TEST2_SYNC, null, true);
+      ProcessingResult result = new ProcessingResult("test", "test.zip");
+      ValidatingProcessor validatingProcessor = new ValidatingProcessor(result);
+    DirectoryIterator directoryIterator = new DirectoryIterator(ERROR_TEST2_SYNC, null, true, result);
 
     directoryIterator.process(validatingProcessor);
     TestCase.assertEquals(3, validatingProcessor.validationErrors.size());

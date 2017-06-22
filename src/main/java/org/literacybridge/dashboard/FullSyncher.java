@@ -36,17 +36,19 @@ public class FullSyncher {
   private final DbPersistenceProcessor            dbPersistenceProcessor;
   private final List<TalkingBookDataProcessor>    processors;
   final         DirectoryProcessor                directoryProcessor;
+  final ProcessingResult result;
 
 
-  public FullSyncher(long updateId, double consistencyThreshold, Collection<TalkingBookSyncWriter> eventWriters) {
+  public FullSyncher(long updateId, double consistencyThreshold, Collection<TalkingBookSyncWriter> eventWriters, ProcessingResult result) {
     this.consistencyThreshold = consistencyThreshold;
     this.eventWriters = eventWriters;
 
     dbPersistenceProcessor = new DbPersistenceProcessor(eventWriters);
     aggregationProcessor = new AggregationProcessor(MIN_SECONDS_FOR_MIN_PLAY);
     processors = ImmutableList.<TalkingBookDataProcessor>of(dbPersistenceProcessor, aggregationProcessor);
-    directoryProcessor = new DirectoryProcessor(processors, DirectoryProcessor.CATEGORY_MAP);
+    directoryProcessor = new DirectoryProcessor(processors, DirectoryProcessor.CATEGORY_MAP, result);
     this.updateId = updateId;
+    this.result = result;
   }
 
   public void processData(File syncRoot) throws Exception {
@@ -55,7 +57,7 @@ public class FullSyncher {
 
   public void processData(File syncRoot, DirectoryFormat format, boolean strict) throws Exception {
 
-    doProcessData(directoryProcessor, syncRoot, format, strict);
+    doProcessData(directoryProcessor, syncRoot, format, strict, result);
 
     /*
     if (!syncRoot.isDirectory()) {
@@ -75,31 +77,31 @@ public class FullSyncher {
     */
   }
 
-  static private void doProcessData(DirectoryCallbacks callbacks, File syncRoot, DirectoryFormat format, boolean strict)
+  static private void doProcessData(DirectoryCallbacks callbacks, File syncRoot, DirectoryFormat format, boolean strict, ProcessingResult result)
       throws Exception {
     if (!syncRoot.isDirectory()) {
       throw new IllegalArgumentException("SyncRoot MUST be a directory.");
     }
 
-    DirectoryIterator directoryIterator = new DirectoryIterator(syncRoot, format, strict);
+    DirectoryIterator directoryIterator = new DirectoryIterator(syncRoot, format, strict, result);
     directoryIterator.process(callbacks);
 
   }
 
   public void processDeviceDir(String deviceName, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, null, null, null), syncRoot, null, false);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, null, null, null), syncRoot, null, false, result);
   }
 
   public void processUpdateDir(String deviceName, String updateName, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, null, null), syncRoot, null, false);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, null, null), syncRoot, null, false, result);
   }
 
   public void processVillageDir(String deviceName, String updateName, String village, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, null), syncRoot, null, false);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, null), syncRoot, null, false, result);
   }
 
   public void processTalkingBookDir(String deviceName, String updateName, String village, String talkingBook, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, talkingBook), syncRoot, null, false);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, talkingBook), syncRoot, null, false, result);
   }
 
 

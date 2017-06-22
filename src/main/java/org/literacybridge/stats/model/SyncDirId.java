@@ -52,12 +52,13 @@ public class SyncDirId /*implements Comparable<SyncDirId>*/ {
     Matcher matchv2 = DirectoryIterator.SYNC_TIME_PATTERN_V2.matcher(syncDirName);
     if (matchv2.matches()) {
 
-      LocalDateTime dateTime = new LocalDateTime(Integer.parseInt(matchv2.group(1)),
-        Integer.parseInt(matchv2.group(2)),
-        Integer.parseInt(matchv2.group(3)),
-        Integer.parseInt(matchv2.group(4)),
-        Integer.parseInt(matchv2.group(5)),
-        Integer.parseInt(matchv2.group(6)));
+      LocalDateTime dateTime = new LocalDateTime(Integer.parseInt(matchv2.group(1)),  // year
+        Integer.parseInt(matchv2.group(2)),     // month
+        Integer.parseInt(matchv2.group(3)),     // day
+        Integer.parseInt(matchv2.group(4)),     // hour
+        Integer.parseInt(matchv2.group(5)),     // minute
+        Integer.parseInt(matchv2.group(6)));    // second
+        // (7) is the tbcd id
       retVal = new SyncDirId(dateTime, syncDirName, matchv2.group(7), SYNC_VERSION_2);
 
     } else {

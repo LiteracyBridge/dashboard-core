@@ -161,7 +161,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
     if (context.logLineInfo == null) {
       backupContentAggregations.aggregator.add(context.context.deploymentId, AggregationOf.corruptedFiles,
                                                contentId, context.context.village, context.context.talkingBookId, 1);
-      logger.error(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.fileName,
+      logger.trace(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.loggingFileName(),
                                  context.logFilePosition.lineNumber));
       return;
     }
@@ -208,7 +208,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
     backupContentAggregations.onRecorded(context, secondsRecorded);
 
     if (context.logLineInfo == null) {
-      logger.error(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.fileName,
+      logger.trace(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.loggingFileName(),
                                  context.logFilePosition.lineNumber));
       return;
     }
@@ -267,7 +267,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
           }
         }
       } else {
-        logger.error(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.fileName,
+        logger.trace(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.loggingFileName(),
                                    context.logFilePosition.lineNumber));
 
       }
@@ -299,7 +299,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
           }
         }
       } else {
-        logger.error(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.fileName,
+        logger.trace(String.format("Corrupted log line info for file %s:%d", context.logFilePosition.loggingFileName(),
                                    context.logFilePosition.lineNumber));
       }
     }

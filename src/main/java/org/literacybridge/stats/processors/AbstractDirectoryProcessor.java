@@ -1,5 +1,6 @@
 package org.literacybridge.stats.processors;
 
+import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.*;
 
@@ -9,20 +10,27 @@ import java.io.IOException;
 /**
  */
 abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
+  protected ProcessingResult result;
 
   protected File currRoot;
   protected DirectoryFormat format;
   protected StatsPackageManifest manifest;
+  protected String currDevice;
   protected DeploymentPerDevice currDeploymentPerDevice;
   protected DeploymentId deploymentId;
   protected String currVillage;
   protected String currTalkingBook;
+
+  protected AbstractDirectoryProcessor(ProcessingResult result) {
+      this.result = result;
+  }
 
   @Override
   public boolean startProcessing(File root, StatsPackageManifest manifest, DirectoryFormat format) throws Exception {
     this.currRoot = root;
     this.format = format;
     this.manifest = manifest;
+    result.addProject(root.getName());
     return true;
   }
 
@@ -34,12 +42,13 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
 
   @Override
   public boolean startDeviceOperationalData(String device) {
-    return false;
+      currDevice = device;
+      return false;
   }
 
   @Override
   public void endDeviceOperationalData() {
-
+      currDevice = null;
   }
 
   @Override
@@ -54,6 +63,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
 
   @Override
   public boolean startDeviceDeployment(DeploymentPerDevice deploymentPerDevice) throws Exception {
+      result.addDeployment(currRoot.getName(), deploymentPerDevice.device, deploymentPerDevice.deployment);
     currDeploymentPerDevice = deploymentPerDevice;
     this.deploymentId = deploymentId;
     return true;
@@ -67,6 +77,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
 
   @Override
   public boolean startVillage(String village) throws Exception {
+      result.addVillage(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, village);
     currVillage = village;
     return true;
   }
@@ -78,6 +89,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
 
   @Override
   public boolean startTalkingBook(String talkingBook) throws Exception {
+      result.addTalkingBook(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, talkingBook);
     currTalkingBook = talkingBook;
     return true;
   }

@@ -16,7 +16,7 @@ public class UnmatchedTbDataEntries extends ValidationError {
   }
 
   public static String createErrorMessage(List<NonMatchingTbDataEntry> nonMatchingTbDataEntries) {
-    return String.format("There are values in the TBData that do not correspond to any directories in the file system.  These entries are: \n  %s",
+    return String.format("There are values in OperationalData that do not correspond to any directories in TalkingBookData.  These entries are: \n  %s",
       StringUtils.join(nonMatchingTbDataEntries, "\n  "));
   }
 }
