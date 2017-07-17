@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -87,11 +86,15 @@ public class LogFileParser {
    * <p/>
    * This will turn something that looks like:
    * 00046a_9_7F67F127 -> 9
+   * 00046a_9_7F67F127 -> $1-0
    * <p/>
    * And capture each important piece (brackets used to denote captures):
    * [00046a_9_7F67F127] -> [9]
+   * [00046a_9_7F67F127] -> [$1-0]
+   *
+   * Test in the debugger like this: Pattern.compile("(\\S+)\\s+->\\s+(\\$?\\d+(?:-\\d)*)\\s*").matcher(args).matches()
    */
-  public static final Pattern REST_OF_RECORD = Pattern.compile("(\\S+)\\s+->\\s+(\\d+)\\s*");
+  public static final Pattern REST_OF_RECORD = Pattern.compile("(\\S+)\\s+->\\s+(\\$?\\d+(?:-\\d)*)\\s*");
   /**
    * Matches the rest of the TIME RECORD event, after the parts are pulled out from LOG_LINE_PATTERN +  LOG_LINE_START_PATTERN
    * <p/>
@@ -111,7 +114,7 @@ public class LogFileParser {
    * And capture each important piece (brackets used to denote captures):
    * VOLTAGE DROP: [0.02]v in [0003] sec
    */
-  public static final Pattern VOLTAGE_DROP = Pattern.compile("VOLTAGE DROP:\\s*([0-9.]+)v\\s*in\\s*(\\d+)\\s+sec");
+  private static final Pattern VOLTAGE_DROP = Pattern.compile("VOLTAGE DROP:\\s*([0-9.]+)v\\s*in\\s*(\\d+)\\s+sec");
   static protected final Logger logger = LoggerFactory.getLogger(LogFileParser.class);
   private final Collection<TalkingBookDataProcessor> eventCallbacks;
   private final SyncProcessingContext context;
@@ -119,8 +122,11 @@ public class LogFileParser {
 
   //Last piece of content played
   private String contentLastPlayed = "";
+    private String currentRawLine;
+    private String currentAction;
+    private String currentParams;
 
-  public LogFileParser(TalkingBookDataProcessor eventCallbacks, SyncProcessingContext context,
+    public LogFileParser(TalkingBookDataProcessor eventCallbacks, SyncProcessingContext context,
                        Map<String, String> categoryMap) {
     this.eventCallbacks = Lists.newArrayList(eventCallbacks);
     this.context = context;
@@ -134,7 +140,8 @@ public class LogFileParser {
     this.categoryMap = categoryMap;
   }
 
-  static boolean checkForMatch(String action, String args, LogFilePosition filePosition, Matcher matcher) {
+  private static boolean checkForMatch(String action, String args, LogFilePosition filePosition,
+                                       Matcher matcher) {
     if (!matcher.matches()) {
 
       //If this is not a feedback message, mark as being an error
@@ -149,7 +156,7 @@ public class LogFileParser {
     return true;
   }
 
-  protected void clearParseState() {
+  private void clearParseState() {
     contentLastPlayed = "";
   }
 
@@ -168,17 +175,17 @@ public class LogFileParser {
     }
 
     try {
-      String strLine;
-      while ((strLine = br.readLine()) != null) {
+        while ((currentRawLine = br.readLine()) != null) {
 
-        final Matcher fullLineMatcher = LOG_LINE_PATTERN.matcher(strLine);
+        final Matcher fullLineMatcher = LOG_LINE_PATTERN.matcher(currentRawLine);
         if (fullLineMatcher.matches()) {
 
           final String preludeString = fullLineMatcher.group(1);
-          final String action = fullLineMatcher.group(2);
-          final String actionParams = fullLineMatcher.group(3);
+          currentAction = fullLineMatcher.group(2);
+          currentParams = fullLineMatcher.group(3);
 
-          if (!parseAction(fileName, lineNumber, preludeString, action, actionParams, strLine)) {
+          if (!parseAction(fileName, lineNumber, preludeString, currentAction, currentParams,
+                           currentRawLine)) {
               numErrors++;
           }
         }
@@ -193,7 +200,7 @@ public class LogFileParser {
     return numErrors;
   }
 
-  public LogLineContext parseLogLineContext(String fileName, int lineNumber, String line) {
+  private LogLineContext parseLogLineContext(String fileName, int lineNumber, String line) {
 
     final LogFilePosition logFilePosition = new LogFilePosition(fileName, lineNumber);
 
@@ -254,8 +261,9 @@ public class LogFileParser {
       lowestVoltage);
   }
 
-  public boolean parseAction(final String fileName, final int lineNumber, final String preludeString, final String action,
-                          final String actionParams, final String rawLine) {
+  private boolean parseAction(final String fileName, final int lineNumber,
+                              final String preludeString, final String action,
+                              final String actionParams, final String rawLine) {
 
     final LogLineContext logLineContext = parseLogLineContext(fileName, lineNumber, preludeString);
     final Matcher voltageMatcher = VOLTAGE_DROP.matcher(actionParams);
@@ -410,6 +418,11 @@ public class LogFileParser {
 
   protected boolean processRecord(LogLineContext logLineContext, String args) {
 
+    // "Record" (vs "RECORD") records are not really log records, but rather are comments.
+    if (currentAction.equals("Record")) {
+        return true;
+    }
+
     //There are several "record" messages that don't have args.  Not much we
     //can do with them.
     if (args.isEmpty()) {
@@ -425,9 +438,18 @@ public class LogFileParser {
     final String contentId = matcher.group(1);
 
     try {
-      final int unknownId = Integer.parseInt(matcher.group(2));
+      // This code parses the category as an integer, and then passes that value on. At best,
+      // of course, that would give the top category. The value isn't actually used for anything,
+      // so there's no real damage done here.
+      // TODO: fix it anyway.
+      int meaningless = 0;
+      try {
+        meaningless = Integer.parseInt(matcher.group(2));
+      } catch (Exception ex) {
+          // Ignore.
+      }
       for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onRecord(logLineContext, contentId, unknownId);
+        eventCallback.onRecord(logLineContext, contentId, meaningless);
       }
     } catch (NumberFormatException e) {
       final String errorString = String.format("%s : %d - Invalid number in Record action. Args=%s, Error=%s",

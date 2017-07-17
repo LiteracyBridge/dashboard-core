@@ -113,6 +113,12 @@ public class ResultTree {
         return makeString(0);
     }
 
+    /**
+     * Turns a key like "LogFileErrors" or "foo bar" into better CSS class names, "logfileerrors" or
+     * "foo-bar".
+     * @param raw name to be made into a better CSS class name.
+     * @return the better name.
+     */
     private String makeClassy(String raw) {
         return raw.replace(' ', '-').toLowerCase();
     }

@@ -59,7 +59,7 @@ public class SyncDirId /*implements Comparable<SyncDirId>*/ {
         Integer.parseInt(matchv2.group(5)),     // minute
         Integer.parseInt(matchv2.group(6)));    // second
         // (7) is the tbcd id
-      retVal = new SyncDirId(dateTime, syncDirName, matchv2.group(7), SYNC_VERSION_2);
+      retVal = new SyncDirId(dateTime, syncDirName, matchv2.group(7).toUpperCase(), SYNC_VERSION_2);
 
     } else {
       LocalDateTime dateTime = parseV1SyncTime(syncDirName, deploymentId.year);
@@ -121,14 +121,15 @@ public class SyncDirId /*implements Comparable<SyncDirId>*/ {
 
     SyncDirId syncDirId = (SyncDirId) o;
 
-    if (dirName != null ? !dirName.equals(syncDirId.dirName) : syncDirId.dirName != null) return false;
-
-    return true;
+    if (dirName == null) {
+        return syncDirId.dirName == null;
+    }
+    return dirName.equalsIgnoreCase(syncDirId.dirName);
   }
 
   @Override
   public int hashCode() {
-    return dirName != null ? dirName.hashCode() : 0;
+    return dirName != null ? dirName.toLowerCase().hashCode() : 0;
   }
 
   /*

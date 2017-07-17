@@ -20,17 +20,17 @@ import java.util.regex.Matcher;
  */
 public class ValidatingProcessor extends AbstractDirectoryProcessor {
 
-    public static final String DEPLOY_ID_EXPECTED = "YYYY-XX formatted string with YYYYY being the year and XX being the current deployment in this year.";
-    public static final String SYNC_DIR_EXPECTED = "Sync directory could not be parsed correct.  Look at https://docs.google.com/document/d/12Q0a7x15FqeZ4ys0gYy4O2MtWYrvGDUegOXwlsG9ZQY for a desciption of the appropriate formats.";
-    public static final String CHECK_DISK_REFORMAT = "chkdsk-reformat.txt";
+    private static final String DEPLOY_ID_EXPECTED = "YYYY-XX formatted string with YYYYY being the year and XX being the current deployment in this year.";
+    private static final String SYNC_DIR_EXPECTED = "Sync directory could not be parsed correct.  Look at https://docs.google.com/document/d/12Q0a7x15FqeZ4ys0gYy4O2MtWYrvGDUegOXwlsG9ZQY for a desciption of the appropriate formats.";
+    private static final String CHECK_DISK_REFORMAT = "chkdsk-reformat.txt";
     protected static final Logger logger = LoggerFactory.getLogger(ValidatingProcessor.class);
     public final List<ValidationError> validationErrors = new ArrayList<>();
 
-    final TreeMap<SyncDirId, OperationalInfo> tbDataInfo = new TreeMap<>(SyncDirId.TIME_COMPARATOR);
-    final int maxTimeWindow = 10;
-    final IdentityHashMap<SyncDirId, SyncDirId> foundSyncDirs = new IdentityHashMap<>();
-    final Set<String> deviceIncorrectlyInManifest = new HashSet<>();
-    final TbDataParser tbDataParser = new TbDataParser();
+    private final TreeMap<SyncDirId, OperationalInfo> tbDataInfo = new TreeMap<>(SyncDirId.TIME_COMPARATOR);
+    private final int maxTimeWindow = 10;
+    private final IdentityHashMap<SyncDirId, SyncDirId> foundSyncDirs = new IdentityHashMap<>();
+    private final Set<String> deviceIncorrectlyInManifest = new HashSet<>();
+    private final TbDataParser tbDataParser = new TbDataParser();
 
     private String currOperationalDevice = null;
 
@@ -69,8 +69,8 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
         }
     }
 
-    protected void processLine(TbDataLine line, File tbdataFile, int lineNumber,
-                               List<IncorrectFilePropertyValue> incorrectFilePropertyValues) {
+    private void processLine(TbDataLine line, File tbdataFile, int lineNumber,
+                             List<IncorrectFilePropertyValue> incorrectFilePropertyValues) {
 
         String syncDirName = line.getUpdateDateTime() + "-" + currOperationalDevice;
         /**
@@ -88,8 +88,11 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
 
         String inTalkingBook = line.getInSn();
         String outTalkingBook = line.getOutSn();
-        if (!inTalkingBook.equalsIgnoreCase(outTalkingBook) && !inTalkingBook.equalsIgnoreCase(
-                "UNKNOWN")) {
+        if (!inTalkingBook.equalsIgnoreCase(outTalkingBook) &&
+                !inTalkingBook.equalsIgnoreCase("UNKNOWN")  &&
+                // Next line to to an awful bug that was live for about 3 months in 2016, assigning "-- to be assigned --"
+                // as serial numbers.
+                !inTalkingBook.equalsIgnoreCase("-- to be assigned --") ) {
             incorrectFilePropertyValues.add(
                     new IncorrectFilePropertyValue("outTalkingBook", inTalkingBook, outTalkingBook,
                                                    lineNumber));
@@ -223,9 +226,14 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
                                                    currVillage));
             }
 
-            if (!currTalkingBook.equalsIgnoreCase(operationalInfo.inTalkingBook)) {
+            if (!currTalkingBook.equalsIgnoreCase(operationalInfo.inTalkingBook) &&
+                    !currTalkingBook.equalsIgnoreCase("UNKNOWN")  &&
+                    // Next line to to an awful bug that was live for about 3 months in 2016, assigning "-- to be assigned --"
+                    // as serial numbers. The outTalkingBook is valid in those cases, however.
+                    !currTalkingBook.equalsIgnoreCase("-- to be assigned --") &&
+                    !currTalkingBook.equalsIgnoreCase(operationalInfo.outTalkingBook)) {
                 incorrectPropertyValues.add(
-                        new IncorrectPropertyValue("Talking Book", operationalInfo.inTalkingBook,
+                        new IncorrectPropertyValue("Talking Book", operationalInfo.outTalkingBook,
                                                    currTalkingBook));
             }
 

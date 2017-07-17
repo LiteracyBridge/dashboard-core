@@ -142,7 +142,7 @@ public class ContentUsageUpdateProcess {
 
     /**
      * Validate that the zip file is valid, upload the file to S3, and write the status to the DB.
-     * <p>
+     *
      * After this call, the UpdateRecord should have a valid ID.
      *
      * @param context
@@ -384,7 +384,7 @@ public class ContentUsageUpdateProcess {
      * Contains the full context of an update usage update.  This references the canonical
      * state information that will go in the DB as well as the in flight transient references to things
      * like temp files and directories.
-     * <p>
+     *
      * This structure is responsible for allocating and tracking temporary files in such a way that they will be cleaned
      * up by a tracker thread.
      */
