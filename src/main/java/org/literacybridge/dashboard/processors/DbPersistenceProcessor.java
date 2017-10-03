@@ -248,15 +248,23 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
     syncProcessingContext = context.context;
     backupContentAggregations.onSurvey(context, contentId);
 
+    // Note: the comment below almost certainly should say "is NOT null", because that's the
+    // (only) way to have another survey that wasn't completed. (Didn't correct it because I
+    // wanted to leave this as intact as possible, to give, ahem, context to the notes in the
+    // next function.
+
     //If the survey content ID is null, then there was another survey
     //that wasn't completed
     if (surveyContentId != null && surveyLogLineContext != null) {
       SurveyEvent event = new SurveyEvent();
       Event.populateEvent(surveyLogLineContext, event);
-      event.setContentId(contentId);
+      event.setContentId(surveyContentId);
       event.setIsUseful(null);
 
-      if (context.logLineInfo != null) {
+      // Note: changed the line below from 'context.logLineInfo', because this section of code is
+      // concerned with a survey event that was not closed out, so it is the previous event that's
+      // being logged.
+      if (surveyLogLineContext.logLineInfo != null) {
         for (EventWriter writer : writers) {
           try {
             writer.writeSurveyEvent(event);
@@ -264,7 +272,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
             logger.error(e.getLocalizedMessage(), e);
           } catch (IdentifierGenerationException e) {
             logger.error(e.getLocalizedMessage(), e);
-            System.out.println("-------> *** HIBERNATE ERROR *** <---------");
+            System.out.println("-------> *** IMPORTER GENERATED NULL PK *** <---------");
           }
         }
       } else {
@@ -283,6 +291,17 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
   public void onSurveyCompleted(LogLineContext context, String contentId, boolean useful) {
     syncProcessingContext = context.context;
     backupContentAggregations.onSurveyCompleted(context, contentId, useful);
+
+    // Note: It is a mystery why this logic is so similar to that above. It is a mystery why we
+    // mix-and-match contentId from this call and context from the onSurvey call. It shouldn't
+    // matter much; it is valid to have an onSurvey without onSurveyCompleted by simply going
+    // to Home on the TB. And it shouldn't be possible to have an onSurveyCompleted without
+    // a matching onSurvey. It particularly shouldn't be possible to have an onSurvey, then a
+    // played event, then onSurveyCompleted. Shouldn't. Given how buggy the TB code is, and how
+    // messy (and usually corrupt) the logs are, it seems it should be safer to use the values
+    // from this call. But given how brittle everything is, I'm leaning to keeping what has been
+    // running ("working" is another question) rather than changing anything. And leaving this as
+    // it is at least requires that there be an opening onSurvey, which isn't bad.
 
     if (surveyContentId != null && surveyLogLineContext != null) {
       SurveyEvent event = new SurveyEvent();
