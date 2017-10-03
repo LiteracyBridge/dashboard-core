@@ -3,7 +3,7 @@ package org.literacybridge.stats.processors;
 import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.LocalDateTime;
-import org.literacybridge.dashboard.ProcessingResult;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.DirectoryIterator;
 import org.literacybridge.stats.formats.tbData.TbDataParser;
 import org.literacybridge.stats.model.*;
@@ -34,8 +34,8 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
 
     private String currOperationalDevice = null;
 
-    public ValidatingProcessor(ProcessingResult result) {
-        super(result);
+    public ValidatingProcessor(ContentUsageUpdateProcess.UpdateUsageContext context) {
+        super(context);
     }
 
     @Override

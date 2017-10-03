@@ -3,6 +3,7 @@ package org.literacybridge.stats;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.literacybridge.dashboard.ProcessingResult;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.*;
 import org.literacybridge.utils.FsUtils;
@@ -154,10 +155,11 @@ public class TestDirectoryIterator {
   @Test
   public void testIteratorSync() throws Exception {
       ProcessingResult result = new ProcessingResult("test", "test.zip");
+      ContentUsageUpdateProcess.UpdateUsageContext context = new ContentUsageUpdateProcess().new UpdateUsageContext(null, null, result);
 
     StatsPackageManifest manifest = new StatsPackageManifest(1, new HashMap<String, SyncRange>());
     DirectoryCallbacks callbacks = setupMock(TEST1_SYNC, DirectoryFormat.Sync, manifest);
-    DirectoryIterator iterator = new DirectoryIterator(TEST1_SYNC, DirectoryFormat.Sync, false, result);
+    DirectoryIterator iterator = new DirectoryIterator(TEST1_SYNC, DirectoryFormat.Sync, false, context);
     iterator.process(callbacks);
 //    verify(callbacks);
 
@@ -167,10 +169,11 @@ public class TestDirectoryIterator {
   @Test
   public void testIteratorArchive() throws Exception {
       ProcessingResult result = new ProcessingResult("test", "test.zip");
+      ContentUsageUpdateProcess.UpdateUsageContext context = new ContentUsageUpdateProcess().new UpdateUsageContext(null, null, result);
 
     StatsPackageManifest manifest = new StatsPackageManifest(2, new HashMap<String, SyncRange>());
     DirectoryCallbacks callbacks = setupMock(TEST1_ARCHIVE, DirectoryFormat.Archive, manifest);
-    DirectoryIterator iterator = new DirectoryIterator(TEST1_ARCHIVE, DirectoryFormat.Archive, false, result);
+    DirectoryIterator iterator = new DirectoryIterator(TEST1_ARCHIVE, DirectoryFormat.Archive, false, context);
     iterator.process(callbacks);
     verify(callbacks);
 

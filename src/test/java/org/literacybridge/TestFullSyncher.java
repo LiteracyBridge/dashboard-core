@@ -2,17 +2,15 @@ package org.literacybridge;
 
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
-import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.literacybridge.dashboard.FullSyncher;
 import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.dashboard.aggregation.StatAggregator;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
-import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
-import org.literacybridge.stats.model.events.PlayedEvent;
 import org.literacybridge.dashboard.model.syncOperations.SyncOperationLog;
-import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess.UpdateUsageContext;
 
 import java.io.File;
 
@@ -27,6 +25,7 @@ public class TestFullSyncher {
   @Test
   public void testSyncherWrongDir() throws Exception {
       ProcessingResult result = new ProcessingResult("test", "test.zip");
+      UpdateUsageContext context = new ContentUsageUpdateProcess().new UpdateUsageContext(null, null, result);
     final File invalidDir = SyncRoot;
 
     final TalkingBookSyncWriter eventWriter = EasyMock.createMock(TalkingBookSyncWriter.class);
@@ -34,7 +33,7 @@ public class TestFullSyncher {
     eventWriter.writeOperationLog(EasyMock.anyObject(SyncOperationLog.class));
     EasyMock.replay(eventWriter);
 
-    FullSyncher syncher = new FullSyncher(0, .1, Lists.newArrayList(eventWriter), result);
+    FullSyncher syncher = new FullSyncher(0, .1, Lists.newArrayList(eventWriter), context);
     try {
       syncher.processData(invalidDir);
       TestCase.fail("processData should fail, since the fir is empty");

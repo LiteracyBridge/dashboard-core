@@ -9,6 +9,7 @@ import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang.StringUtils;
 import org.literacybridge.dashboard.ProcessingResult;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.TalkingBookDataProcessor;
 import org.literacybridge.stats.formats.exceptions.CorruptFileException;
 import org.literacybridge.stats.formats.flashData.FlashData;
@@ -56,16 +57,16 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
   private Set<String> processedLogFiles = new HashSet<>();
 
   public DirectoryProcessor(TalkingBookDataProcessor dataProcessorEventListeners, Map<String, String> categoryMap,
-                            ProcessingResult result) {
-      super(result);
+      ContentUsageUpdateProcess.UpdateUsageContext context) {
+      super(context);
     this.dataProcessorEventListeners = Lists.newArrayList(dataProcessorEventListeners);
     this.categoryMap = categoryMap;
   }
 
 
   public DirectoryProcessor(List<TalkingBookDataProcessor> dataProcessorEventListeners,
-                            Map<String, String> categoryMap, ProcessingResult result) {
-      super(result);
+                            Map<String, String> categoryMap, ContentUsageUpdateProcess.UpdateUsageContext context) {
+      super(context);
     this.dataProcessorEventListeners = dataProcessorEventListeners;
     this.categoryMap = categoryMap;
   }
@@ -315,11 +316,15 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
           runCallbacksOnStatsFile(syncProcessingContext, statsFiles.next());
         }
       } else {
-          result.addCorruptStatisticsDir(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook);
+          result.addCorruptStatisticsDir(currRoot.getName(), currDeploymentPerDevice.device,
+                                         currDeploymentPerDevice.deployment, currVillage,
+                                         currTalkingBook, syncDir.getName());
         logger.error(statDir.getAbsolutePath() + " is NOT a directory.");
       }
     } else {
-        result.addCorruptStatisticsDir(currRoot.getName(), currDeploymentPerDevice.device, currDeploymentPerDevice.deployment, currVillage, currTalkingBook);
+        result.addCorruptStatisticsDir(currRoot.getName(), currDeploymentPerDevice.device,
+                                       currDeploymentPerDevice.deployment, currVillage,
+                                       currTalkingBook, syncDir.getName());
       logger.error("Cannot read " + statDir.getAbsolutePath());
     }
   }

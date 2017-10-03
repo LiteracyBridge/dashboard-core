@@ -1,6 +1,7 @@
 package org.literacybridge.stats.processors;
 
 import org.literacybridge.dashboard.ProcessingResult;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.*;
 
@@ -11,6 +12,7 @@ import java.io.IOException;
  */
 abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
   protected ProcessingResult result;
+  ContentUsageUpdateProcess.UpdateUsageContext context;
 
   protected File currRoot;
   protected DirectoryFormat format;
@@ -21,8 +23,9 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
   protected String currVillage;
   protected String currTalkingBook;
 
-  protected AbstractDirectoryProcessor(ProcessingResult result) {
-      this.result = result;
+  protected AbstractDirectoryProcessor(ContentUsageUpdateProcess.UpdateUsageContext context) {
+      this.result = context.result;
+      this.context = context;
   }
 
   @Override

@@ -9,6 +9,8 @@ import org.apache.commons.io.FileCleaningTracker;
 import org.apache.commons.io.FileDeleteStrategy;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.filefilter.RegexFileFilter;
+import org.apache.commons.lang.mutable.MutableInt;
 import org.literacybridge.dashboard.FullSyncher;
 import org.literacybridge.dashboard.ProcessingResult;
 import org.literacybridge.dashboard.model.syncOperations.UpdateProcessingState;
@@ -31,6 +33,10 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
 import java.util.*;
+import java.util.regex.Pattern;
+
+import static org.apache.commons.io.FileUtils.copyFile;
+import static org.apache.commons.io.FileUtils.openOutputStream;
 
 /**
  * Controls the lifecycle of content usage updates.
@@ -262,8 +268,8 @@ public class ContentUsageUpdateProcess {
     DirectoryIterator iterator = new DirectoryIterator(root, format, isStrict);
 */
         DirectoryIterator iterator = new DirectoryIterator(explodedDir, format, isStrict,
-                                                           context.result);
-        ValidatingProcessor validatingProcessor = new ValidatingProcessor(context.result);
+                                                           context);
+        ValidatingProcessor validatingProcessor = new ValidatingProcessor(context);
         iterator.process(validatingProcessor);
         return validatingProcessor.validationErrors;
     }
@@ -333,7 +339,7 @@ public class ContentUsageUpdateProcess {
         File explodedDir = assureExplodedDir(context);
 
         FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId(), .1,
-                                                  Lists.newArrayList(syncherService.createSyncWriter()), context.result);
+                                                  Lists.newArrayList(syncherService.createSyncWriter()), context);
         fullSyncher.processData(explodedDir, validationParameters.getFormat(),
                                 validationParameters.isStrict());
         fullSyncher.doConsistencyCheck();
@@ -353,13 +359,109 @@ public class ContentUsageUpdateProcess {
 
         FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId().longValue(), .1,
                                                   Lists.newArrayList(syncherService.createSyncWriter()),
-                                                  context.result);
+                                                  context);
         fullSyncher.processData(explodedDir);
         fullSyncher.doConsistencyCheck();
 
         context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
         updateRecordWriterService.write(context.getUpdateRecord());
         return context;
+    }
+
+    private File operationalDataLogsDir;
+    private FileOutputStream tbDataLogs;
+    private FileOutputStream deploymentsLogs;
+    private FileOutputStream statsDataLogs;
+
+    /**
+     * Sets the (optional) directory into which logs from OperationalData are accumulated.
+     * Once set, any tbData-2017y09m29d-000c.log, deploymetns-2017y09m29d-000c.log, and
+     * statsData-2017y09m29d-000c.log files will be concatenated onto resulting
+     * {d}/tbDataAll.log, {d}deploymentsAll.log, and {d}statsDataAll.log files.
+     *
+     * Any existing files are deleted first.
+     *
+     * @param d The directory. Must exist.
+     */
+    public void setOperationalLogDirectory(File d) {
+        if (!d.exists() || !d.isDirectory()) {
+            throw new IllegalStateException("OperationalLogDirectory must exist and be a directory.");
+        }
+        operationalDataLogsDir = d;
+    }
+
+    /**
+     * Call to flush and close the accumulated operational data log files.
+     * @throws IOException if any file can't be flushed or closed.
+     */
+    public void closeOperationalDirectory() throws IOException {
+        if (tbDataLogs != null) {
+            tbDataLogs.flush();
+            tbDataLogs.close();
+            tbDataLogs = null;
+        }
+        if (deploymentsLogs != null) {
+            deploymentsLogs.flush();
+            deploymentsLogs.close();
+            deploymentsLogs = null;
+        }
+        if (statsDataLogs != null) {
+            statsDataLogs.flush();
+            statsDataLogs.close();
+            statsDataLogs = null;
+        }
+        operationalDataLogsDir = null;
+    }
+
+    /**
+     * Appends one "flavor" of operational data log files.
+     * @param logsDir The directory containing the .log files.
+     * @param filter to select only the desired files, by name.
+     * @param accumulator an output stream to accumulate the log files.
+     * @param count
+     * @throws IOException if the file can't be written.
+     */
+    private FileOutputStream appendOperationalLog(
+        File logsDir, Pattern filter, String fileName, FileOutputStream accumulator,
+        MutableInt count) throws IOException {
+        if (accumulator == null) {
+            File f = new File(operationalDataLogsDir, fileName);
+            if (f.exists()) f.delete();
+            accumulator = openOutputStream(f);
+        }
+        File[] list = logsDir.listFiles((FilenameFilter) new RegexFileFilter(filter));
+        if (list != null) {
+            for (File f : list) {
+                copyFile(f, accumulator);
+                // Files should end with a new line, but in case they don't, add one.
+                accumulator.write("\n".getBytes());
+                count.increment();
+            }
+        }
+        return accumulator;
+    }
+    private static final Pattern TB_DATA_LOGS = Pattern.compile(
+        "tbData-(\\d+)y(\\d+)m(\\d+)d-(.*).log", Pattern.CASE_INSENSITIVE);
+    private static final Pattern STATS_DATA_LOGS = Pattern.compile(
+        "statsData-(\\d+)y(\\d+)m(\\d+)d-(.*).log", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DEPLOYMENTS_LOGS = Pattern.compile(
+        "deployments-(\\d+)y(\\d+)m(\\d+)d-(.*).log", Pattern.CASE_INSENSITIVE);
+    private static final String TB_DATA_LOG = "tbDataAll.log";
+    private static final String STATS_DATA_LOG = "statsDataAll.log";
+    private static final String DEPLOYMENTS_LOG = "deploymentsAll.log";
+    /**
+     * Given an OperationalData directory, append any contained .log files.
+     * @param logsDir that may have data.
+     * @throws IOException if any data can't be written.
+     */
+    private int appendOperationalLogsImpl(File logsDir) throws IOException {
+        MutableInt count = new MutableInt(0);
+        if (operationalDataLogsDir != null) {
+            tbDataLogs = appendOperationalLog(logsDir, TB_DATA_LOGS, TB_DATA_LOG, tbDataLogs, count);
+            statsDataLogs = appendOperationalLog(logsDir, STATS_DATA_LOGS, STATS_DATA_LOG, statsDataLogs, count);
+            deploymentsLogs = appendOperationalLog(logsDir, DEPLOYMENTS_LOGS, DEPLOYMENTS_LOG, deploymentsLogs, count);
+        }
+        return count.intValue();
     }
 
     /**
@@ -437,6 +539,11 @@ public class ContentUsageUpdateProcess {
             }
 
             return true;
+        }
+
+        public int appendOperationalLogs(File logsDir) throws IOException {
+            // Defer to containing object.
+            return appendOperationalLogsImpl(logsDir);
         }
     }
 

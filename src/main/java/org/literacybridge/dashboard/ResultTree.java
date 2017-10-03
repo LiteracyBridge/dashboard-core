@@ -85,6 +85,18 @@ public class ResultTree {
     }
 
     /**
+     * Retrieves a value previously set in a node.
+     * @param path List of names of the node with the attribute.
+     * @param key The desired attribute.
+     * @return The value of the attribute, or null if no attribute.
+     */
+    protected String getAttribute(List<String> path, String key) {
+        ResultTree rt = addChild(path);
+        if (rt.attributes == null) return null;
+        return rt.attributes.get(key);
+    }
+
+    /**
      * Creates a formatted string of the node, attributes, and children.
      * @param indent How much to indent each line.
      * @return The node, formatted as a string.

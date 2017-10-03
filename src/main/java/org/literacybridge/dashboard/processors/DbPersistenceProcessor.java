@@ -65,6 +65,7 @@ public class DbPersistenceProcessor extends AbstractLogProcessor {
 
   @Override
   public void processTbDataLine(TbDataLine tbDataLine) {
+    // What a triumph of orthogonality over usefulness...
     for (TalkingBookSyncWriter writer : writers) {
       try {
         writer.writeTbDataLog(tbDataLine);

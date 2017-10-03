@@ -6,6 +6,7 @@ import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.literacybridge.dashboard.ProcessingResult;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.DeploymentId;
 import org.literacybridge.stats.model.DeploymentPerDevice;
@@ -25,6 +26,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
@@ -59,12 +61,29 @@ public class DirectoryIterator {
     private final File[] rootFiles;
     private DirectoryFormat format;
     private ProcessingResult result;
+    ContentUsageUpdateProcess.UpdateUsageContext context;
 
-    public DirectoryIterator(File root, DirectoryFormat format, boolean strict, ProcessingResult result) {
+    // This is a horrible hack. We want to run appendOperationalLogs() once per input .zip file,
+    // but the code's control flow is such that there is no good place to do so. The
+    // directory tree is iterated FOUR TIMES. (No wonder this is so slow!) And all the parts
+    // of the code are incredibly tightly coupled, so breaking it apart is very difficult.
+    // (In fairness, the multiple directory structures that are supported are completely abstracted
+    // out, so the logic need not care about which version of directory structure is being
+    // processed.)
+    //
+    // So, we keep a map of directories that we've visited.
+    //
+    // Hopefully we can replace this entire monster with something a little more flexible and
+    // maintainable. But, for now, it works.
+    private static Set<String> visitedRoots = new TreeSet<>();
+
+
+    public DirectoryIterator(File root, DirectoryFormat format, boolean strict, ContentUsageUpdateProcess.UpdateUsageContext context) {
         this.rootFiles = rootInFunnyZip(root);
         this.strict = strict;
         this.format = format;
-        this.result = result;
+        this.result = context.result;
+        this.context = context;
     }
 
     /**
@@ -247,7 +266,7 @@ public class DirectoryIterator {
         this.format = format;
 
         logger.debug("Generating manifest");
-        ManifestCreationCallbacks manifestCreationCallbacks = new ManifestCreationCallbacks(result);
+        ManifestCreationCallbacks manifestCreationCallbacks = new ManifestCreationCallbacks(context);
         process(root, null, manifestCreationCallbacks);
         StatsPackageManifest result = manifestCreationCallbacks.generateManifest(format);
         logger.debug("---------"); //
@@ -262,6 +281,11 @@ public class DirectoryIterator {
         }
 
         if (callbacks.startProcessing(root, manifest, format)) {
+
+            if (manifest != null && !visitedRoots.contains(root.getAbsolutePath())) {
+                appendOperationalLogs(root);
+                visitedRoots.add(root.getAbsolutePath());
+            }
 
             TreeSet<DeploymentPerDevice> deploymentPerDevices = loadDeviceDeployments(root);
 
@@ -423,6 +447,30 @@ public class DirectoryIterator {
         }
 
         return retVal;
+    }
+
+    private void appendOperationalLogs(final File root) {
+        // Any logs are in {PROJECT}/OperationalData/{DEVICE}/tbData/*.log
+        // Only this "format" of TB data has the operational logs.
+        if (format == DirectoryFormat.Archive) {
+            // See if OperationalData directory exists.
+            File operationalData = FsUtils.FileIgnoreCase(root, DEVICE_OPERATIONS_DIR_ARCHIVE_V2);
+            if (operationalData.exists() && operationalData.isDirectory()) {
+                // Enumerate the device sub-dirs.
+                for (File device : operationalData.listFiles()) {
+                    File tbDataDir = new File (device, TBDATA_DIR_V2);
+                    // If those are directories, look for any log files.
+                    if (tbDataDir.exists() && tbDataDir.isDirectory()) {
+                        try {
+                            int count = context.appendOperationalLogs(tbDataDir);
+                            result.addOperationalLogsAppended(root.getName(), device.getName(), count);
+                        } catch (IOException e) {
+                            result.addOperationaLogError(root.getName(), device.getName());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public DirectoryFormat getFormat() {

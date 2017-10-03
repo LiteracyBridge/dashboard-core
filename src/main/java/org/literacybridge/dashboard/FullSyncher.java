@@ -6,6 +6,7 @@ import org.literacybridge.dashboard.aggregation.AggregationOf;
 import org.literacybridge.dashboard.aggregation.Grouping;
 import org.literacybridge.dashboard.aggregation.StatAggregator;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
+import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.api.TalkingBookDataProcessor;
 import org.literacybridge.stats.formats.syncDirectory.DirectoryProcessor;
@@ -36,19 +37,19 @@ public class FullSyncher {
   private final DbPersistenceProcessor            dbPersistenceProcessor;
   private final List<TalkingBookDataProcessor>    processors;
   final         DirectoryProcessor                directoryProcessor;
-  final ProcessingResult result;
+  private final ContentUsageUpdateProcess.UpdateUsageContext context;
 
 
-  public FullSyncher(long updateId, double consistencyThreshold, Collection<TalkingBookSyncWriter> eventWriters, ProcessingResult result) {
+  public FullSyncher(long updateId, double consistencyThreshold, Collection<TalkingBookSyncWriter> eventWriters, ContentUsageUpdateProcess.UpdateUsageContext context) {
     this.consistencyThreshold = consistencyThreshold;
     this.eventWriters = eventWriters;
 
     dbPersistenceProcessor = new DbPersistenceProcessor(eventWriters);
     aggregationProcessor = new AggregationProcessor(MIN_SECONDS_FOR_MIN_PLAY);
     processors = ImmutableList.<TalkingBookDataProcessor>of(dbPersistenceProcessor, aggregationProcessor);
-    directoryProcessor = new DirectoryProcessor(processors, DirectoryProcessor.CATEGORY_MAP, result);
+    directoryProcessor = new DirectoryProcessor(processors, DirectoryProcessor.CATEGORY_MAP, context);
     this.updateId = updateId;
-    this.result = result;
+    this.context = context;
   }
 
   public void processData(File syncRoot) throws Exception {
@@ -57,7 +58,7 @@ public class FullSyncher {
 
   public void processData(File syncRoot, DirectoryFormat format, boolean strict) throws Exception {
 
-    doProcessData(directoryProcessor, syncRoot, format, strict, result);
+    doProcessData(directoryProcessor, syncRoot, format, strict, context);
 
     /*
     if (!syncRoot.isDirectory()) {
@@ -77,31 +78,31 @@ public class FullSyncher {
     */
   }
 
-  static private void doProcessData(DirectoryCallbacks callbacks, File syncRoot, DirectoryFormat format, boolean strict, ProcessingResult result)
+  static private void doProcessData(DirectoryCallbacks callbacks, File syncRoot, DirectoryFormat format, boolean strict, ContentUsageUpdateProcess.UpdateUsageContext context)
       throws Exception {
     if (!syncRoot.isDirectory()) {
       throw new IllegalArgumentException("SyncRoot MUST be a directory.");
     }
 
-    DirectoryIterator directoryIterator = new DirectoryIterator(syncRoot, format, strict, result);
+    DirectoryIterator directoryIterator = new DirectoryIterator(syncRoot, format, strict, context);
     directoryIterator.process(callbacks);
 
   }
 
   public void processDeviceDir(String deviceName, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, null, null, null), syncRoot, null, false, result);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, null, null, null), syncRoot, null, false, context);
   }
 
   public void processUpdateDir(String deviceName, String updateName, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, null, null), syncRoot, null, false, result);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, null, null), syncRoot, null, false, context);
   }
 
   public void processVillageDir(String deviceName, String updateName, String village, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, null), syncRoot, null, false, result);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, null), syncRoot, null, false, context);
   }
 
   public void processTalkingBookDir(String deviceName, String updateName, String village, String talkingBook, File syncRoot) throws Exception {
-    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, talkingBook), syncRoot, null, false, result);
+    doProcessData(new FilteringProcessor(directoryProcessor, deviceName, updateName, village, talkingBook), syncRoot, null, false, context);
   }
 
 

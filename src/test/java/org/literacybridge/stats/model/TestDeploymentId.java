@@ -22,18 +22,6 @@ public class TestDeploymentId {
     TestCase.assertEquals("2013-2", deploymentId.id);
     TestCase.assertEquals("", deploymentId.flavor);
 
-    deploymentId = deploymentId.guessPrevious();
-    TestCase.assertEquals(2013, deploymentId.year);
-    TestCase.assertEquals(1, deploymentId.update);
-    TestCase.assertEquals("2013-01", deploymentId.id);
-    TestCase.assertEquals("", deploymentId.flavor);
-
-    deploymentId = deploymentId.guessPrevious();
-    TestCase.assertEquals(2012, deploymentId.year);
-    TestCase.assertEquals(8, deploymentId.update);
-    TestCase.assertEquals("2012-08", deploymentId.id);
-    TestCase.assertEquals("", deploymentId.flavor);
-
     deploymentId = DeploymentId.parseContentUpdate("Unknown");
     TestCase.assertEquals(0, deploymentId.year);
     TestCase.assertEquals(0, deploymentId.update);
@@ -82,23 +70,4 @@ public class TestDeploymentId {
 
   }
 
-  @Test
-  public void testGuessPrevious() {
-    DeploymentId id_Simple = DeploymentId.parseContentUpdate("2013-07");
-    DeploymentId id_Simple_prev = DeploymentId.parseContentUpdate("2013-06");
-    TestCase.assertEquals(id_Simple_prev, id_Simple.guessPrevious());
-
-    DeploymentId id_Simple_flavor = DeploymentId.parseContentUpdate("2013-07b");
-    DeploymentId id_Simple_flavor_prev = DeploymentId.parseContentUpdate("2013-06b");
-    TestCase.assertEquals(id_Simple_flavor_prev, id_Simple_flavor.guessPrevious());
-
-    DeploymentId id_FirstUpdate = DeploymentId.parseContentUpdate("2013-01");
-    DeploymentId id_FirstUpdate_prev = DeploymentId.parseContentUpdate("2012-08");
-    TestCase.assertEquals(id_FirstUpdate_prev, id_FirstUpdate.guessPrevious());
-
-    DeploymentId id_FirstUpdate_flavor = DeploymentId.parseContentUpdate("2013-01b");
-    DeploymentId id_FirstUpdate_flavor_prev = DeploymentId.parseContentUpdate("2012-08b");
-    TestCase.assertEquals(id_FirstUpdate_flavor_prev, id_FirstUpdate_flavor.guessPrevious());
-
-  }
 }
