@@ -111,8 +111,10 @@ public class TbData2 {
         }
 
         if (cmd.hasOption("d")) {
+            String opLogs = cmd.getOptionValue("d", ".");
             contentUsageUpdateProcess.setOperationalLogDirectory(
-                new File(cmd.getOptionValue("d", ".")));
+                new File(opLogs));
+            System.out.println(String.format("Collected operational logs will be placed in %s", opLogs));
         }
 
         final File zipFile = new File(cmd.getOptionValue("z", "."));

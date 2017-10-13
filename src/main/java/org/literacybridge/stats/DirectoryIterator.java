@@ -458,7 +458,7 @@ public class DirectoryIterator {
             if (operationalData.exists() && operationalData.isDirectory()) {
                 // Enumerate the device sub-dirs.
                 for (File device : operationalData.listFiles()) {
-                    File tbDataDir = new File (device, TBDATA_DIR_V2);
+                    File tbDataDir = FsUtils.FileIgnoreCase(device, TBDATA_DIR_V2);
                     // If those are directories, look for any log files.
                     if (tbDataDir.exists() && tbDataDir.isDirectory()) {
                         try {
