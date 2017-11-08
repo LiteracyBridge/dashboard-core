@@ -44,8 +44,10 @@ public class DirectoryIterator {
             "(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s", Pattern.CASE_INSENSITIVE);
     public static final Pattern SYNC_TIME_PATTERN_V2 = Pattern.compile(
             "(\\d+)y(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s-(.*)", Pattern.CASE_INSENSITIVE);
+    // Note the (?!.*conflicted copy.*) negative lookahead at the beginning. This is to avoid
+    // the Dropbox files 'foo (JOE's conflicted copy yyyy-mm-dd).bar'
     private static final Pattern TBDATA_PATTERN_V2 = Pattern.compile(
-            "tbData-v(\\d+)-(\\d+)y(\\d+)m(\\d+)d-(.*).csv", Pattern.CASE_INSENSITIVE);
+            "(?!.*conflicted copy.*)tbData-v(\\d+)-(\\d+)y(\\d+)m(\\d+)d-(.*).csv", Pattern.CASE_INSENSITIVE);
     private static final String MANIFEST_FILE_NAME = "StatsPackageManifest.json";
 
     //tbData-v00-2014y05m02d-9d8839de.csv

@@ -119,12 +119,12 @@ public class SyncDirId /*implements Comparable<SyncDirId>*/ {
     if (this == o) return true;
     if (!(o instanceof SyncDirId)) return false;
 
-    SyncDirId syncDirId = (SyncDirId) o;
+    SyncDirId other = (SyncDirId) o;
 
     if (dirName == null) {
-        return syncDirId.dirName == null;
+        return other.dirName == null;
     }
-    return dirName.equalsIgnoreCase(syncDirId.dirName);
+    return dirName.equalsIgnoreCase(other.dirName);
   }
 
   @Override
@@ -154,7 +154,7 @@ public class SyncDirId /*implements Comparable<SyncDirId>*/ {
   @Override
   public String toString() {
     return "SyncDirId{" +
-      "dirName='" + dirName + '\'' +
+      "dirName='" + dirName.toUpperCase() + '\'' +
       '}';
   }
 }

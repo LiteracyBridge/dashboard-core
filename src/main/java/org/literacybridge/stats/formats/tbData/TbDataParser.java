@@ -128,7 +128,18 @@ public class TbDataParser {
 
   protected static final char[] FIELD_DELIMITERS = new char[]{'-'};
 
-  private static <T, E> T getKeyByValue(Map<T, E> map, E value) {
+    // **************** set up for "stats-only" hack ****************
+    private static final String updateDateTimeHeading = "UPDATE_DATE_TIME";
+    private static final String actionHeading = "ACTION";
+    private static final String firstMissingHeading = "OUT-DEPLOYMENT";
+    private static final String statsAction = "stats-only";
+    private static final String snRegex = "(?i)[AB]-[0-9a-f]{8}";
+    private static final String hackStartDate = "2017Y07M24";
+    private static final String hackEndDate = "2017Y10M20";
+
+
+
+    private static <T, E> T getKeyByValue(Map<T, E> map, E value) {
     for (Map.Entry<T, E> entry : map.entrySet()) {
       if (Objects.equals(value, entry.getValue())) {
         return entry.getKey();
@@ -154,19 +165,76 @@ public class TbDataParser {
       headerMap = V0_TB_MAP;
     }
 
+    // **************** set up for "stats-only" hack ****************
+    int updateDateTimeIx = 0;
+    int actionIx = 0;
+    int firstMissingIx = 0;
+    int numMissingFields = 5;
+    int lengthToExamine = 0;
+
     for (String[] line : lines) {
 
+      // Is this supposed to be a header line?
       if (lineNumber == 1 && includesHeaders) {
+        // Should be a headre. Is the first column's header what we find in the first column?
+        // If so, this is probably really a header.
         String firstHeaderDefined = getKeyByValue(headerMap,0);
         String firstHeaderActual = line[0];
         if (firstHeaderActual.equalsIgnoreCase(firstHeaderDefined)) {
-          headerMap = processHeader(line);
+            headerMap = processHeader(line);
+
+            // **************** set up for "stats-only" hack ****************
+            // Count duplicated headings.
+            Set<String> headings = new HashSet<>();
+            int numDuplicatedHeadings = 0;  // "FLASH_ROTATION" occurs 5 times: 4 duplicates
+            for (String heading: line) {
+                if (headings.contains(heading))
+                    numDuplicatedHeadings++;
+                else
+                    headings.add(heading);
+            }
+            // 5 missing fields, but 4 duplicated headings.
+            lengthToExamine = headerMap.size()+numDuplicatedHeadings-numMissingFields;
         } else {
-          includesHeaders = false;
+            includesHeaders = false;
+
+            // **************** set up for "stats-only" hack ****************
+            // 5 missing fields
+            lengthToExamine = headerMap.size()-numMissingFields;
         }
+        updateDateTimeIx = headerMap.get(updateDateTimeHeading);
+        actionIx = headerMap.get(actionHeading);
+        firstMissingIx = headerMap.get(firstMissingHeading);
       }
       if (!(lineNumber == 1 && includesHeaders)) {
         try {
+          // **************** "stats-only" hack ****************
+          // Fix for a bug in TB-Loader from 2017-07-24 through 2017-10-19.
+          // 5 columns were missing from the tbdata file when the operation was "stats-only":
+          //     OUT-DEPLOYMENT, OUT-IMAGE, OUT-FW-REV, OUT-COMMUNITY, and OUT-ROTATION-DATE
+          // were omitted from columns 8, 9, 10, 11, and 12 (starting with 1).
+          // This caused 'IN-SN' to be written in the column for 'OUT-DEPLOYMENT'.
+          // So, if the number of elements is 5 less than it should be and
+          //     ACTION is "stats-only", and
+          //     UPDATE_DATE_TIME >= "2017Y07M24" and <= "2017Y10M20" and
+          //     OUT-DEPLOYMENT matches (?i)[AB]-[0-9a-f]{8} then
+          //   Insert 5 blank elements before the column 'OUT-DEPLOYMENT', to slide 'IN-SN' into
+          //     the correct column.
+          if (line.length == lengthToExamine
+                  && line[actionIx].equalsIgnoreCase(statsAction)
+                  && line[updateDateTimeIx].compareToIgnoreCase(hackStartDate) > 0
+                  && line[updateDateTimeIx].compareToIgnoreCase(hackEndDate) < 0
+                  && line[firstMissingIx].matches(snRegex)) {
+              logger.warn("Applying 'stats-only' hack. (See source for details.)");
+              String[] newLine = new String[line.length+numMissingFields];
+              System.arraycopy(line, 0, newLine, 0, firstMissingIx);
+              System.arraycopy(line, firstMissingIx, newLine, firstMissingIx+numMissingFields, line.length-firstMissingIx);
+              for (int ix=0; ix<numMissingFields; ix++) {
+                  newLine[firstMissingIx+ix] = "";
+              }
+              line = newLine;
+          }
+
           retVal.add(processLine(line, headerMap));
           processLine(line, headerMap);
         } catch (NoSuchMethodException e) {

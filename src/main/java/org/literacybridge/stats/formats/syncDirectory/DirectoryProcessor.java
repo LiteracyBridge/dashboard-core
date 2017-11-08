@@ -292,7 +292,8 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
         final File archivedFile = archivedLogFiles.next();
         int numErrors = processLogFile(archivedFile, parser, processedFiles);
         numLogFiles++;
-        if (numErrors > 0) numLogFilesWithErrors++;
+        if (numErrors > 0)
+            numLogFilesWithErrors++;
         numLogFileErrors += numErrors;
       }
     }
