@@ -296,7 +296,8 @@ public class TbDataParser {
       if (type.equals(Date.class)) {
         try {
           value = lineValues.get(propertyName);
-          // TODO: we need to fix this.
+          // TODO: we need to fix this.  We have lots of dates like "Thu Apr 21 00:00:00 WAT 2016"
+          // that this can't parse.
           setter.invoke(line, new Date(value));
         } catch (IllegalArgumentException e) {
           // Don't log for empty strings. That's just "no value".

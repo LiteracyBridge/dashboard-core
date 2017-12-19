@@ -289,31 +289,38 @@ public class DirectoryIterator {
                 visitedRoots.add(root.getAbsolutePath());
             }
 
-            TreeSet<DeploymentPerDevice> deploymentPerDevices = loadDeviceDeployments(root);
+            TreeSet<DeploymentPerDevice> deploymentPerDevices = loadDeviceAndDeployments(root);
 
             if (!deploymentPerDevices.isEmpty()) {
-                String currDevice = null;
-                boolean deviceAlreadyProcessed = false;
-                boolean processDevice = false;
+                String tbLoaderDevice = null;
+                boolean tbDataForTbLoaderProcessed = false;
+                boolean processTbLoaderDevice = false;
 
+                // This code is broken in that is implicitly assumes that all entries for a given
+                // tb loader id will be returned together. It only works because there will only be
+                // data for a given tb loader in a single zip file.
+
+                // First load the operational data for the tb loader.
                 for (DeploymentPerDevice deploymentPerDevice : deploymentPerDevices) {
                     logger.debug(String.format("  device: %s, deployment: %s", deploymentPerDevice.device,
                                                deploymentPerDevice.deployment));
-                    if (!deploymentPerDevice.device.equalsIgnoreCase(currDevice)) {
+                    if (!deploymentPerDevice.device.equalsIgnoreCase(tbLoaderDevice)) {
 
-                        if (processDevice) {
+                        // Were we already processing a tb loader?
+                        if (processTbLoaderDevice) {
+                            // Yes, end the process.
                             callbacks.endDeviceOperationalData();
                         }
 
-                        currDevice = deploymentPerDevice.device;
-                        deviceAlreadyProcessed = false;
-                        processDevice = callbacks.startDeviceOperationalData(currDevice);
+                        tbLoaderDevice = deploymentPerDevice.device;
+                        tbDataForTbLoaderProcessed = false;
+                        processTbLoaderDevice = callbacks.startDeviceOperationalData(tbLoaderDevice);
                     }
 
-                    if (processDevice) {
-                        File tbdataDir = getTbDataDir(root, currDevice, format);
+                    if (processTbLoaderDevice) {
+                        File tbdataDir = getTbDataDir(root, tbLoaderDevice, format);
                         //
-                        if (!deviceAlreadyProcessed && tbdataDir.exists()) {
+                        if (!tbDataForTbLoaderProcessed && tbdataDir.exists()) {
 
                             if (format == DirectoryFormat.Sync) {
                                 for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(TBDATA_PATTERN))) {
@@ -328,12 +335,12 @@ public class DirectoryIterator {
                                     callbacks.processTbDataFile(potential, true);
                                 }
                             }
-                            deviceAlreadyProcessed = true;
+                            tbDataForTbLoaderProcessed = true;
                         }
                     }
                 }
 
-                if (processDevice) {
+                if (processTbLoaderDevice) {
                     callbacks.endDeviceOperationalData();
                 }
             } else {
@@ -341,28 +348,34 @@ public class DirectoryIterator {
                         "No records found in this directory.  Make sure the format in the manifest is correct?  Make sure the directory structure is correct?");
             }
 
+            // For each "tb loader and deployment" (pair),
+            //   for each village,
+            //      for each talking book,
+            //          process the statistics & files captured from the Talking Book.
+
+
             for (DeploymentPerDevice deploymentPerDevice : deploymentPerDevices) {
                 DeploymentId deploymentId = DeploymentId.parseContentUpdate(deploymentPerDevice.deployment);
                 if (deploymentId.year == 0 && strict) {
                     throw new IllegalArgumentException("Illegal deployment: " + deploymentId);
                 }
 
-                if (callbacks.startDeviceDeployment(deploymentPerDevice)) {
-                    processDeviceDeployment(root, deploymentPerDevice.device, deploymentId,
+                if (callbacks.startDeviceAndDeployment(deploymentPerDevice)) {
+                    processDeviceAndDeployment(root, deploymentPerDevice.device, deploymentId,
                                             deploymentPerDevice.getRoot(root, format), callbacks);
-                    callbacks.endDeviceDeployment();
+                    callbacks.endDeviceAndDeployment();
                 }
             }
             callbacks.endProcessing();
         }
     }
 
-    private void processDeviceDeployment(File root, String device, DeploymentId deploymentId, File deviceDeploymentDir, DirectoryCallbacks callbacks)
+    private void processDeviceAndDeployment(File root, String device, DeploymentId deploymentId, File deviceAndDeploymentDir, DirectoryCallbacks callbacks)
             throws Exception {
-        logger.debug(String.format("    device: %s, deployment: %s", deviceDeploymentDir.getName(),
+        logger.debug(String.format("    device: %s, deployment: %s", deviceAndDeploymentDir.getName(),
                                    deploymentId));
         System.out.println(" " + deploymentId.toString());
-        for (File villageDir : deviceDeploymentDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
+        for (File villageDir : deviceAndDeploymentDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
             if (callbacks.startVillage(villageDir.getName().trim())) {
                 System.out.println("   " + villageDir.getName());
                 processVillage(root, device, deploymentId, villageDir, callbacks);
@@ -419,7 +432,7 @@ public class DirectoryIterator {
         }
     }
 
-    private TreeSet<DeploymentPerDevice> loadDeviceDeployments(final File root) {
+    private TreeSet<DeploymentPerDevice> loadDeviceAndDeployments(final File root) {
 
         TreeSet<DeploymentPerDevice> retVal = new TreeSet<DeploymentPerDevice>(DeploymentPerDevice.ORDER_BY_DEVICE);
 

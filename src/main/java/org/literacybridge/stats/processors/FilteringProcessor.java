@@ -70,7 +70,7 @@ public class FilteringProcessor implements DirectoryCallbacks {
   }
 
   @Override
-  public boolean startDeviceDeployment(DeploymentPerDevice deploymentPerDevice)
+  public boolean startDeviceAndDeployment(DeploymentPerDevice deploymentPerDevice)
     throws Exception {
 
     if (allowedDevice != null && !allowedDevice.equalsIgnoreCase(deploymentPerDevice.device)) {
@@ -81,12 +81,12 @@ public class FilteringProcessor implements DirectoryCallbacks {
       return false;
     }
 
-    return callbacks.startDeviceDeployment(deploymentPerDevice);
+    return callbacks.startDeviceAndDeployment(deploymentPerDevice);
   }
 
   @Override
-  public void endDeviceDeployment() throws Exception {
-    callbacks.endDeviceDeployment();
+  public void endDeviceAndDeployment() throws Exception {
+    callbacks.endDeviceAndDeployment();
   }
 
   @Override

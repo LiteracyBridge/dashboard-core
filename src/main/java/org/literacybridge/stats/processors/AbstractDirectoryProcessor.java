@@ -65,7 +65,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
   }
 
   @Override
-  public boolean startDeviceDeployment(DeploymentPerDevice deploymentPerDevice) throws Exception {
+  public boolean startDeviceAndDeployment(DeploymentPerDevice deploymentPerDevice) throws Exception {
       result.addDeployment(currRoot.getName(), deploymentPerDevice.device, deploymentPerDevice.deployment);
     currDeploymentPerDevice = deploymentPerDevice;
     this.deploymentId = deploymentId;
@@ -73,7 +73,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
   }
 
   @Override
-  public void endDeviceDeployment() throws Exception {
+  public void endDeviceAndDeployment() throws Exception {
     currDeploymentPerDevice = null;
     deploymentId = null;
   }

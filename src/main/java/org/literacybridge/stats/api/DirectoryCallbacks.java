@@ -78,9 +78,9 @@ public interface DirectoryCallbacks {
    * false if the iterator should skip files related to this (Device,Deployment) pair.
    * @throws Exception
    */
-  boolean startDeviceDeployment(@Nonnull DeploymentPerDevice deploymentPerDevice) throws Exception;
+  boolean startDeviceAndDeployment(@Nonnull DeploymentPerDevice deploymentPerDevice) throws Exception;
 
-  void endDeviceDeployment() throws Exception;
+  void endDeviceAndDeployment() throws Exception;
 
   /**
    * Called for each village (within a deploymentPerDevice) that is being visited.
