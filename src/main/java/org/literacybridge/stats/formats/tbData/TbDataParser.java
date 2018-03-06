@@ -135,7 +135,8 @@ public class TbDataParser {
     private static final String statsAction = "stats-only";
     private static final String snRegex = "(?i)[AB]-[0-9a-f]{8}";
     private static final String hackStartDate = "2017Y07M24";
-    private static final String hackEndDate = "2017Y10M20";
+    // If we're ever sure that no more will be produced, uncomment next line, with correct date
+    //private static final String hackEndDate = "2017Y10M20";
 
 
 
@@ -216,14 +217,17 @@ public class TbDataParser {
           // This caused 'IN-SN' to be written in the column for 'OUT-DEPLOYMENT'.
           // So, if the number of elements is 5 less than it should be and
           //     ACTION is "stats-only", and
-          //     UPDATE_DATE_TIME >= "2017Y07M24" and <= "2017Y10M20" and
+          //     UPDATE_DATE_TIME >= "2017Y07M24" and
           //     OUT-DEPLOYMENT matches (?i)[AB]-[0-9a-f]{8} then
           //   Insert 5 blank elements before the column 'OUT-DEPLOYMENT', to slide 'IN-SN' into
           //     the correct column.
+          // Someday we may be able to add another predicate like <= "2017Y10M20" and, but as
+          // of 2017/12, bad data is still coming in.
           if (line.length == lengthToExamine
                   && line[actionIx].equalsIgnoreCase(statsAction)
                   && line[updateDateTimeIx].compareToIgnoreCase(hackStartDate) > 0
-                  && line[updateDateTimeIx].compareToIgnoreCase(hackEndDate) < 0
+                  // If we're ever sure that no more will be produced, uncomment next line
+                  // && line[updateDateTimeIx].compareToIgnoreCase(hackEndDate) < 0
                   && line[firstMissingIx].matches(snRegex)) {
               logger.warn("Applying 'stats-only' hack. (See source for details.)");
               String[] newLine = new String[line.length+numMissingFields];
