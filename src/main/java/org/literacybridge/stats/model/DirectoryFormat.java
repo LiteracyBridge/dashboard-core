@@ -3,8 +3,8 @@ package org.literacybridge.stats.model;
 /**
  */
 public enum DirectoryFormat {
-  Sync(1),
-  Archive(2);
+  Sync(1),      // The old (2010?) style stats data
+  Archive(2);   // The newer (2013?, 2014?) style stats data
 
   public final int version;
 

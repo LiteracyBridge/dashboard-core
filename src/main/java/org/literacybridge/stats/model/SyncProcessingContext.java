@@ -3,23 +3,34 @@ package org.literacybridge.stats.model;
 import org.joda.time.LocalDateTime;
 
 /**
- * THis is a general model class that is useful for processing any format of file that has
+ * THis is a general dbTables class that is useful for processing any format of file that has
  * been synced by a talking book.  It contains the context about the content the talking book
  * had on it as well as the time it was synced.
  *
  * @author willpugh
  */
 public class SyncProcessingContext extends ProcessingContext {
-  public final LocalDateTime syncTime;
+  public final LocalDateTime syncTime; // stats time
+  public final LocalDateTime deploymentTime;
   public final String contentPackage;
+  public final String project;
 
-  public SyncProcessingContext(String syncString, String talkingBookId, String village, String contentPackage,
-                               String contentUpdate, String deviceSyncedFrom) {
-    super(talkingBookId, village, contentUpdate, deviceSyncedFrom);
+  public SyncProcessingContext(String syncString,
+      String talkingBookId,
+      String village,
+      String contentPackage,
+      String contentUpdate,
+      String project,
+      String deviceSyncedFrom,
+      String recipientId,
+      LocalDateTime deploymentTime) {
+    super(talkingBookId, village, contentUpdate, deviceSyncedFrom, recipientId);
+
     SyncDirId syncDirId = SyncDirId.parseSyncDir(deploymentId, syncString);
     this.syncTime = syncDirId.dateTime;
     this.contentPackage = contentPackage;
-
+    this.project = project;
+    this.deploymentTime = deploymentTime;
   }
 
   @Override

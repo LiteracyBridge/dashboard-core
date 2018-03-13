@@ -25,17 +25,21 @@ public class TestStatAggregator {
         StatAggregator statAggregator = new StatAggregator();
         statAggregator.add(UPDATE_ID_1, AggregationOf.tenSecondPlays, "TestContentId", "TestVillage", "TestTalkingBook", 3);
         TestCase.assertEquals(1, statAggregator.perUpdateAggregations.size());
-        TestCase.assertEquals(3, statAggregator.perUpdateAggregations.get(UPDATE_ID_1).getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(3, statAggregator.perUpdateAggregations.get(UPDATE_ID_1).getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.tenSecondPlays));
 
         statAggregator.add(UPDATE_ID_1_DIFFERENT_INSTANCE, AggregationOf.tenSecondPlays, "TestContentId", "TestVillage2", "TestTalkingBook2", 3);
         TestCase.assertEquals(1, statAggregator.perUpdateAggregations.size());
-        TestCase.assertEquals(6, statAggregator.perUpdateAggregations.get(UPDATE_ID_1).getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(3, statAggregator.perUpdateAggregations.get(UPDATE_ID_1).getAggregationMap(Grouping.village).get("TestVillage2").get(AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(6, statAggregator.perUpdateAggregations.get(UPDATE_ID_1).getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(3, statAggregator.perUpdateAggregations.get(UPDATE_ID_1).getAggregationMap(Grouping.village).get("TestVillage2").get(
+            AggregationOf.tenSecondPlays));
 
 
         statAggregator.add(UPDATE_ID_2, AggregationOf.tenSecondPlays, "TestContentId", "TestVillage", "TestTalkingBook", 5);
         TestCase.assertEquals(2, statAggregator.perUpdateAggregations.size());
-        TestCase.assertEquals(5, statAggregator.perUpdateAggregations.get(UPDATE_ID_2).getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(5, statAggregator.perUpdateAggregations.get(UPDATE_ID_2).getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(
+            AggregationOf.tenSecondPlays));
 
     }
 

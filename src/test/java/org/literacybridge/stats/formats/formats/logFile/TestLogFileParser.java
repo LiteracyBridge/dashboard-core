@@ -9,7 +9,6 @@ import org.literacybridge.stats.formats.logFile.LogFileParser;
 import org.literacybridge.stats.formats.logFile.LogFilePosition;
 import org.literacybridge.stats.formats.logFile.LogLineContext;
 import org.literacybridge.stats.formats.logFile.LogLineInfo;
-import org.literacybridge.stats.formats.syncDirectory.DirectoryProcessor;
 import org.literacybridge.stats.model.SyncProcessingContext;
 
 import java.io.ByteArrayInputStream;
@@ -21,8 +20,8 @@ public class TestLogFileParser {
 
   public static final SyncProcessingContext TEST_FILE_CONTEXT = new SyncProcessingContext("SyncDevice1",
     "10m1d16h37m35s", "TB10",
-    "MyVillage", "ContentPackage",
-    "ContentUpdate");
+    "MyVillage", "ContentPackage", "TestProj",
+    "ContentUpdate", null, null);
 
   public static final String TEST_FILE_NAME = "TestFileName";
   public static final LogFilePosition TEST_FILE_POSITION = new LogFilePosition(TEST_FILE_NAME, 1);
@@ -34,7 +33,7 @@ public class TestLogFileParser {
   public void testParseLogLineInfo() {
 
     TalkingBookDataProcessor eventInterface = EasyMock.createMock(TalkingBookDataProcessor.class);
-    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
 
 
     LogLineInfo logLineInfo = logFileParser.parseLogLineInfo("2r0096c008p023d18h18m53s401/314/314V");
@@ -52,7 +51,7 @@ public class TestLogFileParser {
   public void testParseLogLineInfoNoRotation() {
 
     TalkingBookDataProcessor eventInterface = EasyMock.createMock(TalkingBookDataProcessor.class);
-    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
 
 
     LogLineInfo logLineInfo = logFileParser.parseLogLineInfo("0096c008p023d18h18m53s401/314/314V");
@@ -70,7 +69,7 @@ public class TestLogFileParser {
   public void testParseLogLineInfo2() {
 
     TalkingBookDataProcessor eventInterface = EasyMock.createMock(TalkingBookDataProcessor.class);
-    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
 
 
     LogLineInfo logLineInfo = logFileParser.parseLogLineInfo("0r0015c003p004d14h09m42s339/289/289V");
@@ -90,7 +89,7 @@ public class TestLogFileParser {
 
     //UNDONE(willpugh) -- I don't know why there is an S sometimes.  Ask Cliff. . .
     TalkingBookDataProcessor eventInterface = EasyMock.createMock(TalkingBookDataProcessor.class);
-    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
 
 
     LogLineInfo logLineInfo = logFileParser.parseLogLineInfo("0r0035c012pS18d14h22m59s306/217/216V");
@@ -108,7 +107,7 @@ public class TestLogFileParser {
   public void testParseInvalidLogLineInfo() {
 
     TalkingBookDataProcessor eventInterface = EasyMock.createMock(TalkingBookDataProcessor.class);
-    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
 
     LogLineInfo logLineInfo = logFileParser.parseLogLineInfo("ar0035c012pS18d14h22m59s306/217/216V");
     TestCase.assertEquals(null, logLineInfo);
@@ -129,7 +128,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     TestCase.assertEquals("", logFileParser.getContentLastPlayed());
 
     logFileParser.parse(TEST_FILE_NAME, is);
@@ -154,7 +153,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     TestCase.assertEquals("", logFileParser.getContentLastPlayed());
 
     logFileParser.parse(TEST_FILE_NAME, is);
@@ -178,7 +177,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     TestCase.assertEquals("", logFileParser.getContentLastPlayed());
 
     logFileParser.parse(TEST_FILE_NAME, is);
@@ -199,11 +198,11 @@ public class TestLogFileParser {
 
     final TalkingBookDataProcessor eventInterface = EasyMock.createMock(TalkingBookDataProcessor.class);
     eventInterface.onLogFileStart(TEST_FILE_NAME);
-    eventInterface.onCategory(context, "TB");
+    eventInterface.onCategory(context, "$0-1");
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -229,7 +228,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -255,7 +254,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -271,7 +270,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -291,7 +290,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -311,7 +310,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -331,7 +330,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -358,7 +357,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -387,7 +386,7 @@ public class TestLogFileParser {
 
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }
@@ -414,7 +413,7 @@ public class TestLogFileParser {
     eventInterface.onLogFileEnd();
     EasyMock.replay(eventInterface);
 
-    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT, DirectoryProcessor.CATEGORY_MAP);
+    final LogFileParser logFileParser = new LogFileParser(eventInterface, TEST_FILE_CONTEXT);
     logFileParser.parse(TEST_FILE_NAME, is);
     EasyMock.verify(eventInterface);
   }

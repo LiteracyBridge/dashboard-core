@@ -116,4 +116,7 @@ public interface DirectoryCallbacks {
   void processSyncDir(SyncDirId syncDirId, File syncDir) throws Exception;
 
 
+  void creatingManifest(File root);
+  void createdManifest();
+
 }

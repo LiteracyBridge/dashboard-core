@@ -52,9 +52,9 @@
         <property name="dataSource" ref="dataSource"/>
         <property name="packagesToScan">
           <list>
-            <value>org.literacybridge.dashboard.model</value>
+            <value>org.literacybridge.dashboard.dbTables</value>
               <value>org.literacybridge.stats.model</value>
-              <value>org.literacybridge.stats.model.events</value>
+              <value>org.literacybridge.dashboard.dbTables.events</value>
           </list>
         </property>
         <property name="hibernateProperties">

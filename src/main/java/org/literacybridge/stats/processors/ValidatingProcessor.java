@@ -3,6 +3,7 @@ package org.literacybridge.stats.processors;
 import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.LocalDateTime;
+import org.literacybridge.dashboard.dbTables.TbDataLine;
 import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.DirectoryIterator;
 import org.literacybridge.stats.formats.tbData.TbDataParser;
@@ -11,6 +12,7 @@ import org.literacybridge.stats.model.validation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
@@ -23,6 +25,10 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
     private static final String DEPLOY_ID_EXPECTED = "YYYY-XX formatted string with YYYYY being the year and XX being the current deployment in this year.";
     private static final String SYNC_DIR_EXPECTED = "Sync directory could not be parsed correct.  Look at https://docs.google.com/document/d/12Q0a7x15FqeZ4ys0gYy4O2MtWYrvGDUegOXwlsG9ZQY for a desciption of the appropriate formats.";
     private static final String CHECK_DISK_REFORMAT = "chkdsk-reformat.txt";
+
+    private static final String PROGRESS_CREATING_MANIFEST = "Creating manifest for %s...";
+    private static final String PROGRESS_CREATED_MANIFEST = "done.%n";
+
     protected static final Logger logger = LoggerFactory.getLogger(ValidatingProcessor.class);
     public final List<ValidationError> validationErrors = new ArrayList<>();
 
@@ -39,7 +45,7 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
     }
 
     @Override
-    public boolean startDeviceOperationalData(String device) {
+    public boolean startDeviceOperationalData(@Nonnull String device) {
         super.startDeviceOperationalData(device);
         currOperationalDevice = device;
         return true;
@@ -348,4 +354,17 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
         }
 
     }
+
+    @Override
+    public void creatingManifest(File root) {
+        super.creatingManifest(root);
+        System.out.print(String.format(PROGRESS_CREATING_MANIFEST, root.getName()));
+    }
+
+    @Override
+    public void createdManifest() {
+        super.createdManifest();
+        System.out.print(String.format(PROGRESS_CREATED_MANIFEST));
+    }
+
 }

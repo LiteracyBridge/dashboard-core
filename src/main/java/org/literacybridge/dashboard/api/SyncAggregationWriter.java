@@ -1,6 +1,7 @@
 package org.literacybridge.dashboard.api;
 
-import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
+import org.literacybridge.dashboard.dbTables.contentUsage.SyncAggregation;
+import org.literacybridge.stats.model.SyncProcessingContext;
 
 import java.io.IOException;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
  */
 public interface SyncAggregationWriter {
 
-  public void writeAggregation(SyncAggregation aggregation) throws IOException;
+  public void writeAggregation(SyncAggregation aggregation,
+      SyncProcessingContext context) throws IOException;
 
 }

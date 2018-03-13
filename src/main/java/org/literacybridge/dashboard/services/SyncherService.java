@@ -2,7 +2,7 @@ package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
-import org.literacybridge.dashboard.processors.DbSyncWriter;
+import org.literacybridge.dashboard.processors.DbStatsWriter;
 import org.literacybridge.dashboard.api.EventWriter;
 import org.literacybridge.dashboard.api.SyncAggregationWriter;
 import org.literacybridge.dashboard.api.SyncOperationLogWriter;
@@ -19,17 +19,20 @@ public class SyncherService {
   @Resource
   private SessionFactory sessionFactory;
 
+  // autowired to an instance of DatabaseSyncOperationLogWriterService
   @Autowired
   private SyncOperationLogWriter syncOperationLogWriter;
 
+  // autowired to an instance of DatabaseEventWriterService
   @Autowired
   private EventWriter databaseEventWriter;
 
+  // autowired to an instance of SyncAggregationWriterService
   @Autowired
   private SyncAggregationWriter syncAggregationWriter;
 
   public TalkingBookSyncWriter createSyncWriter() {
-    return new DbSyncWriter(databaseEventWriter, syncAggregationWriter, syncOperationLogWriter);
+    return new DbStatsWriter(databaseEventWriter, syncAggregationWriter, syncOperationLogWriter);
   }
 
 

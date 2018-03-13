@@ -3,7 +3,7 @@ package org.literacybridge.stats.formats.tbData;
 import au.com.bytecode.opencsv.CSVReader;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang.WordUtils;
-import org.literacybridge.stats.model.TbDataLine;
+import org.literacybridge.dashboard.dbTables.TbDataLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,7 +151,6 @@ public class TbDataParser {
 
   public List<TbDataLine> parseTbDataFile(File tbdataFile, boolean includesHeaders) throws IOException {
 
-    System.out.println(" reading " + tbdataFile.getName());
     List<TbDataLine> retVal = new ArrayList<>();
     FileReader fileReader = new FileReader(tbdataFile);
     CSVReader csvReader = new CSVReader(fileReader);

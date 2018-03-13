@@ -2,7 +2,6 @@ package org.literacybridge.dashboard.processes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.hash.HashingInputStream;
 import com.google.common.io.CountingInputStream;
 import org.apache.commons.io.FileCleaningTracker;
@@ -11,15 +10,21 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.lang.mutable.MutableInt;
-import org.literacybridge.dashboard.FullSyncher;
-import org.literacybridge.dashboard.ProcessingResult;
-import org.literacybridge.dashboard.model.syncOperations.UpdateProcessingState;
-import org.literacybridge.dashboard.model.syncOperations.UsageUpdateRecord;
-import org.literacybridge.dashboard.model.syncOperations.ValidationParameters;
+import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
+import org.literacybridge.dashboard.dbTables.syncOperations.UpdateProcessingState;
+import org.literacybridge.dashboard.dbTables.syncOperations.UsageUpdateRecord;
+import org.literacybridge.dashboard.dbTables.syncOperations.ValidationParameters;
+import org.literacybridge.dashboard.processors.AggregationProcessor;
+import org.literacybridge.dashboard.processors.DbPersistenceProcessor;
+import org.literacybridge.dashboard.processors.FlatPersistenceProcessor;
+import org.literacybridge.dashboard.processors.FlatStatsWriter;
 import org.literacybridge.dashboard.services.S3Service;
 import org.literacybridge.dashboard.services.SyncherService;
 import org.literacybridge.dashboard.services.UpdateRecordWriterService;
+import org.literacybridge.main.FullSyncher;
+import org.literacybridge.main.ProcessingResult;
 import org.literacybridge.stats.DirectoryIterator;
+import org.literacybridge.stats.api.TalkingBookDataProcessor;
 import org.literacybridge.stats.model.DirectoryFormat;
 import org.literacybridge.stats.model.validation.ValidationError;
 import org.literacybridge.stats.processors.ValidatingProcessor;
@@ -36,7 +41,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import static org.apache.commons.io.FileUtils.copyFile;
-import static org.apache.commons.io.FileUtils.openOutputStream;
+import static org.literacybridge.main.FullSyncher.MIN_SECONDS_FOR_MIN_PLAY;
 
 /**
  * Controls the lifecycle of content usage updates.
@@ -49,21 +54,32 @@ public class ContentUsageUpdateProcess {
     @Autowired
     private S3Service s3Service;
 
+    // autowired to an instance of SyncherService
     @Autowired
     private SyncherService syncherService;
 
+    // autowired to an instance of UpdateRecordWriterService
     @Autowired
     private UpdateRecordWriterService updateRecordWriterService;
 
-    public UpdateUsageContext createContext(UsageUpdateRecord processingState, File tempDir,
-                                            FileCleaningTracker fileCleaningTracker,
-                                            ProcessingResult result) {
-        UpdateUsageContext context = new UpdateUsageContext(tempDir, fileCleaningTracker, result);
-        context.setUpdateRecord(processingState);
-        return context;
+    private File globalDataLogsDir;
+    private Map<String, PrintStream> globalFiles = new HashMap<>();
+
+    /**
+     * This option is to control whether SQL db will be updated with the results of the run.
+     * Many of the writes take place through "writer" objects, but there are also isolated
+     * writes scattered around. The application was not written in a modular way, nor to be
+     * changed, so pointing the updates is difficult and messy.
+     */
+    boolean writeToSql = true;
+    public void setNoSql() {
+        writeToSql = false;
+    }
+    public boolean isWriteToSql() {
+        return writeToSql;
     }
 
-    public UpdateUsageContext processUpdateUpload(InputStream is, File tempDir, String deviceName,
+    public UpdateUsageContext createInitialContext(InputStream is, File tempDir, String deviceName,
                                                   String updateName,
                                                   FileCleaningTracker fileCleaningTracker,
                                                   ProcessingResult result) throws IOException {
@@ -96,6 +112,9 @@ public class ContentUsageUpdateProcess {
                                       ValidationParameters validationParameters) throws Exception {
 
         UpdateProcessingState state = context.getUpdateRecord().getState();
+        if (state != UpdateProcessingState.initialized) {
+            throw new IllegalStateException("Initial state of context must be 'initialized'.");
+        }
         while (state != UpdateProcessingState.done && state != UpdateProcessingState.failed) {
             context = processNextStep(context, validationParameters);
             state = context.getUpdateRecord().getState();
@@ -104,25 +123,30 @@ public class ContentUsageUpdateProcess {
     }
 
     @Nonnull
-    public UpdateUsageContext processNextStep(@Nonnull UpdateUsageContext context,
-                                              ValidationParameters validationParameters)
+    private UpdateUsageContext processNextStep(@Nonnull UpdateUsageContext context,
+        ValidationParameters validationParameters)
             throws Exception {
         Preconditions.checkNotNull(context.getUpdateRecord().getState(),
                                    "UpdateRecord must be set and have a valid state.");
 
         switch (context.getUpdateRecord().getState()) {
         case initialized:
+            // will update state to '.accepted' or '.failed'; passes through states of
+            // '.done', '.uploadedToDb', or '.aggegated'
             context = validateAndUpload(context, validationParameters);
             break;
 
         case accepted:
+            // Sets state to '.uploadedToDb' or throws Exception
             context = writeUpdatesToDb(context, validationParameters);
             break;
 
         case uploadedToDb:
+            // New state will be '.done'
             context = deleteTempFiles(context);
-            //throw new NotYetImplementedException("Aggregation feature is not implemented yet");
             break;
+        case aggegated:
+            throw new IllegalStateException("In endless loop state");
         case done:
         case failed:
             //Nothing to do.
@@ -135,7 +159,7 @@ public class ContentUsageUpdateProcess {
     private UpdateUsageContext deleteTempFiles(@Nonnull UpdateUsageContext context) {
 
         File initialFile = context.tempFileMap.get(TempFileType.initialFile);
-        File explodedDir = context.tempFileMap.get(TempFileType.explodedDir);
+        File explodedDir = context.tempFileMap.get(TempFileType.expandedDir);
         initialFile.delete();
         try {
             FileUtils.deleteDirectory(explodedDir);
@@ -151,13 +175,16 @@ public class ContentUsageUpdateProcess {
      *
      * After this call, the UpdateRecord should have a valid ID.
      *
+     * Note that nothing useful is written to the DB. And nothing is uploaded to s3. What this
+     * actually does is 'unzipAndValidate'
+     *
      * @param context
      * @param validationParameters
      * @return
      * @throws Exception
      */
-    public UpdateUsageContext validateAndUpload(@Nonnull UpdateUsageContext context,
-                                                @Nonnull ValidationParameters validationParameters)
+    private UpdateUsageContext validateAndUpload(@Nonnull UpdateUsageContext context,
+        @Nonnull ValidationParameters validationParameters)
             throws Exception {
 
         final boolean SKIP_S3_UPLOAD = true;
@@ -211,7 +238,9 @@ public class ContentUsageUpdateProcess {
 
         //
         //Now save out results
-        updateRecordWriterService.writeWithErrors(updateRecord, validationErrors);
+        if (isWriteToSql()) {
+            updateRecordWriterService.writeWithErrors(updateRecord, validationErrors);
+        }
         return context;
     }
 
@@ -237,36 +266,10 @@ public class ContentUsageUpdateProcess {
                                                    @Nullable DirectoryFormat format,
                                                    boolean isStrict) throws Exception {
 
-        File explodedDir = context.createTempFile(TempFileType.explodedDir);
+        File explodedDir = context.createTempFile(TempFileType.expandedDir);
         FsUtils.unzip(context.tempFileMap.get(TempFileType.initialFile), explodedDir);
 
-/*    File[] f = explodedDir.listFiles(new FileFilter() {
-      @Override
-      public boolean accept(File pathname) {
-        if (pathname.isDirectory() && !pathname.isHidden() && !pathname.getName().startsWith("_") && !pathname.getName().startsWith(".")) // avoid folders like __MACOSX
-          return true;
-        else
-          return false;
-      }
-    });
-    if (f.length != 1) {
-      // should only be one non-hidden normal directory in the zip
-      throw new Exception ("Bad directory structure inside zip.  Should include only one directory at top level.");
-    }
-    File root;
-    if (f[0].getName().equalsIgnoreCase("collected-data")) {
-      root = f[0];
-    } else {
-      // TODO: we should capture the name of the dropbox folder that this data came from and store it in the database.
-      // This will help us analyze which laptop/tablet is getting the data.  Could tell us which staff person is gathering how much data.
-      // But for now we will just pass it by and get to collected-data.
-      root = new File(f[0],"collected-data");
-      if (!root.exists()) {
-        throw new Exception ("Bad directory structure inside zip.  There is no collected-data directory inside the top level directory.");
-      }
-    }
-    DirectoryIterator iterator = new DirectoryIterator(root, format, isStrict);
-*/
+
         DirectoryIterator iterator = new DirectoryIterator(explodedDir, format, isStrict,
                                                            context);
         ValidatingProcessor validatingProcessor = new ValidatingProcessor(context);
@@ -314,8 +317,8 @@ public class ContentUsageUpdateProcess {
     }
 
     @Nonnull
-    protected File assureExplodedDir(@Nonnull UpdateUsageContext context) throws IOException {
-        File retVal = context.tempFileMap.get(TempFileType.explodedDir);
+    private File assureExplodedDir(@Nonnull UpdateUsageContext context) throws IOException {
+        File retVal = context.tempFileMap.get(TempFileType.expandedDir);
         if (retVal == null) {
             File initialFile = context.tempFileMap.get(TempFileType.initialFile);
             if (initialFile == null) {
@@ -324,111 +327,115 @@ public class ContentUsageUpdateProcess {
                                     context.getUpdateRecord().getS3Id(), initialFile);
             }
 
-            retVal = context.createTempFile(TempFileType.explodedDir);
+            retVal = context.createTempFile(TempFileType.expandedDir);
             FsUtils.unzip(initialFile, retVal);
         }
 
         return retVal;
     }
 
-    public UpdateUsageContext writeUpdatesToDb(@Nonnull UpdateUsageContext context,
-                                               @Nonnull ValidationParameters validationParameters)
+    /**
+     * Performs the actual work of parsing, processing, and persisting the statistics.
+     * @param context for the stats processing
+     * @param validationParameters
+     * @return the updated context
+     * @throws Exception
+     */
+    private UpdateUsageContext writeUpdatesToDb(@Nonnull UpdateUsageContext context,
+        @Nonnull ValidationParameters validationParameters)
             throws Exception {
 
         long start = System.currentTimeMillis() / 1000;
         File explodedDir = assureExplodedDir(context);
 
-        FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId(), .1,
-                                                  Lists.newArrayList(syncherService.createSyncWriter()), context);
+        Collection<TalkingBookSyncWriter> writers = new ArrayList<>();
+        Collection<TalkingBookDataProcessor> processors = new ArrayList<>();
+
+        if (isWriteToSql()) {
+            TalkingBookSyncWriter dbWriter = syncherService.createSyncWriter();
+            writers.add(dbWriter);
+
+            DbPersistenceProcessor dbPersistenceProcessor = new DbPersistenceProcessor(dbWriter);
+            processors.add(dbPersistenceProcessor);
+        }
+
+        TalkingBookSyncWriter flatWriter = new FlatStatsWriter(context);
+        writers.add(flatWriter);
+
+        FlatPersistenceProcessor flatPersistenceProcessor = new FlatPersistenceProcessor(flatWriter);
+        processors.add(flatPersistenceProcessor);
+
+        AggregationProcessor aggregationProcessor = new AggregationProcessor(MIN_SECONDS_FOR_MIN_PLAY);
+        processors.add(aggregationProcessor);
+
+        FullSyncher fullSyncher = new FullSyncher(.1,
+                                                  writers, processors, context);
         fullSyncher.processData(explodedDir, validationParameters.getFormat(),
                                 validationParameters.isStrict());
         fullSyncher.doConsistencyCheck();
         long end = System.currentTimeMillis() / 1000;
         context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
-        updateRecordWriterService.write(context.getUpdateRecord());
+        if (isWriteToSql()) {
+            updateRecordWriterService.write(context.getUpdateRecord());
+        }
         long elapsedSec = end - start;
         System.out.println("Time: " + elapsedSec + " seconds.");
         return context;
     }
 
-    public UpdateUsageContext aggregateUpdates(@Nonnull UpdateUsageContext context,
-                                               @Nonnull ValidationParameters validationParameters)
-            throws Exception {
-
-        File explodedDir = assureExplodedDir(context);
-
-        FullSyncher fullSyncher = new FullSyncher(context.getUpdateRecord().getId().longValue(), .1,
-                                                  Lists.newArrayList(syncherService.createSyncWriter()),
-                                                  context);
-        fullSyncher.processData(explodedDir);
-        fullSyncher.doConsistencyCheck();
-
-        context.getUpdateRecord().setState(UpdateProcessingState.uploadedToDb);
-        updateRecordWriterService.write(context.getUpdateRecord());
-        return context;
-    }
-
-    private File operationalDataLogsDir;
-    private FileOutputStream tbDataLogs;
-    private FileOutputStream deploymentsLogs;
-    private FileOutputStream statsDataLogs;
-
     /**
      * Sets the (optional) directory into which logs from OperationalData are accumulated.
      * Once set, any tbData-2017y09m29d-000c.log, deploymetns-2017y09m29d-000c.log, and
      * statsData-2017y09m29d-000c.log files will be concatenated onto resulting
-     * {d}/tbDataAll.log, {d}deploymentsAll.log, and {d}statsDataAll.log files.
+     * {d}/tbDataAll.kvp, {d}deploymentsAll.kvp, and {d}statsDataAll.kvp files.
      *
      * Any existing files are deleted first.
      *
      * @param d The directory. Must exist.
      */
-    public void setOperationalLogDirectory(File d) {
+    public void setGlobalLogDirectory(File d) {
         if (!d.exists() || !d.isDirectory()) {
             throw new IllegalStateException("OperationalLogDirectory must exist and be a directory.");
         }
-        operationalDataLogsDir = d;
+        globalDataLogsDir = d;
+    }
+
+    public PrintStream getGlobalOutputStream(String fileName) throws IOException {
+        PrintStream ps = globalFiles.get(fileName);
+        if (ps == null) {
+            File f = new File(globalDataLogsDir, fileName);
+            if (f.exists()) f.delete();
+            ps = new PrintStream(f);
+            globalFiles.put(fileName, ps);
+        }
+        return ps;
     }
 
     /**
      * Call to flush and close the accumulated operational data log files.
      * @throws IOException if any file can't be flushed or closed.
      */
-    public void closeOperationalDirectory() throws IOException {
-        if (tbDataLogs != null) {
-            tbDataLogs.flush();
-            tbDataLogs.close();
-            tbDataLogs = null;
+    synchronized public void closeGlobalDirectory() throws IOException {
+        for (Map.Entry<String, PrintStream> entry : globalFiles.entrySet()) {
+            entry.getValue().flush();
+            entry.getValue().close();
         }
-        if (deploymentsLogs != null) {
-            deploymentsLogs.flush();
-            deploymentsLogs.close();
-            deploymentsLogs = null;
-        }
-        if (statsDataLogs != null) {
-            statsDataLogs.flush();
-            statsDataLogs.close();
-            statsDataLogs = null;
-        }
-        operationalDataLogsDir = null;
+        globalFiles.clear();
+        globalDataLogsDir = null;
     }
 
     /**
-     * Appends one "flavor" of operational data log files.
+     * Consolidates one "flavor" of operational data log files; tbData, statsData, or deployments.
      * @param logsDir The directory containing the .log files.
-     * @param filter to select only the desired files, by name.
-     * @param accumulator an output stream to accumulate the log files.
-     * @param count
+     * @param filter to select the desired files, by file name.
+     * @param count The count of files consolidated is accumulated here.
      * @throws IOException if the file can't be written.
      */
-    private FileOutputStream appendOperationalLog(
-        File logsDir, Pattern filter, String fileName, FileOutputStream accumulator,
+    private void appendOperationalLog(
+        File logsDir, Pattern filter, String fileName,
         MutableInt count) throws IOException {
-        if (accumulator == null) {
-            File f = new File(operationalDataLogsDir, fileName);
-            if (f.exists()) f.delete();
-            accumulator = openOutputStream(f);
-        }
+        PrintStream accumulator = getGlobalOutputStream(fileName);
+
         File[] list = logsDir.listFiles((FilenameFilter) new RegexFileFilter(filter));
         if (list != null) {
             for (File f : list) {
@@ -438,7 +445,6 @@ public class ContentUsageUpdateProcess {
                 count.increment();
             }
         }
-        return accumulator;
     }
     private static final Pattern TB_DATA_LOGS = Pattern.compile(
         "tbData-(\\d+)y(\\d+)m(\\d+)d-(.*).log", Pattern.CASE_INSENSITIVE);
@@ -446,20 +452,20 @@ public class ContentUsageUpdateProcess {
         "statsData-(\\d+)y(\\d+)m(\\d+)d-(.*).log", Pattern.CASE_INSENSITIVE);
     private static final Pattern DEPLOYMENTS_LOGS = Pattern.compile(
         "deployments-(\\d+)y(\\d+)m(\\d+)d-(.*).log", Pattern.CASE_INSENSITIVE);
-    private static final String TB_DATA_LOG = "tbDataAll.log";
-    private static final String STATS_DATA_LOG = "statsDataAll.log";
-    private static final String DEPLOYMENTS_LOG = "deploymentsAll.log";
+    private static final String TB_DATA_LOG = "tbDataAll.kvp";
+    private static final String STATS_DATA_LOG = "statsDataAll.kvp";
+    private static final String DEPLOYMENTS_LOG = "deploymentsAll.kvp";
     /**
      * Given an OperationalData directory, append any contained .log files.
      * @param logsDir that may have data.
      * @throws IOException if any data can't be written.
      */
-    private int appendOperationalLogsImpl(File logsDir) throws IOException {
+    private int appendOperationalLogs(File logsDir) throws IOException {
         MutableInt count = new MutableInt(0);
-        if (operationalDataLogsDir != null) {
-            tbDataLogs = appendOperationalLog(logsDir, TB_DATA_LOGS, TB_DATA_LOG, tbDataLogs, count);
-            statsDataLogs = appendOperationalLog(logsDir, STATS_DATA_LOGS, STATS_DATA_LOG, statsDataLogs, count);
-            deploymentsLogs = appendOperationalLog(logsDir, DEPLOYMENTS_LOGS, DEPLOYMENTS_LOG, deploymentsLogs, count);
+        if (globalDataLogsDir != null) {
+            appendOperationalLog(logsDir, TB_DATA_LOGS, TB_DATA_LOG, count);
+            appendOperationalLog(logsDir, STATS_DATA_LOGS, STATS_DATA_LOG, count);
+            appendOperationalLog(logsDir, DEPLOYMENTS_LOGS, DEPLOYMENTS_LOG, count);
         }
         return count.intValue();
     }
@@ -469,7 +475,7 @@ public class ContentUsageUpdateProcess {
      */
     enum TempFileType {
         initialFile(".zip", false),
-        explodedDir("", true),
+        expandedDir("", true),
         aggregationDest("", true),
         zippedAggregation(".zip", false);
 
@@ -492,15 +498,16 @@ public class ContentUsageUpdateProcess {
      */
     public class UpdateUsageContext {
 
-        public final File tempDirRoot;
-        public final FileCleaningTracker fileCleaningTracker;
-        public final Map<TempFileType, File> tempFileMap = new HashMap<>();
+        final File tempDirRoot;
+        final FileCleaningTracker fileCleaningTracker;
+        final Map<TempFileType, File> tempFileMap = new HashMap<>();
 
+        @SuppressWarnings({"unchecked"})
         public List<ValidationError> validationErrors = Collections.EMPTY_LIST;
 
         public ProcessingResult result;
 
-        protected UsageUpdateRecord updateRecord;
+        UsageUpdateRecord updateRecord;
 
         public UpdateUsageContext(File tempDirRoot, FileCleaningTracker fileCleaningTracker,
                                   ProcessingResult result) {
@@ -513,11 +520,11 @@ public class ContentUsageUpdateProcess {
             return updateRecord;
         }
 
-        public void setUpdateRecord(UsageUpdateRecord updateRecord) {
+        void setUpdateRecord(UsageUpdateRecord updateRecord) {
             this.updateRecord = updateRecord;
         }
 
-        public File createTempFile(TempFileType type) throws IOException {
+        File createTempFile(TempFileType type) throws IOException {
             final File retVal = File.createTempFile(type.toString(), type.suffix, tempDirRoot);
             if (type.isDir) {
                 retVal.delete();
@@ -543,7 +550,11 @@ public class ContentUsageUpdateProcess {
 
         public int appendOperationalLogs(File logsDir) throws IOException {
             // Defer to containing object.
-            return appendOperationalLogsImpl(logsDir);
+            return ContentUsageUpdateProcess.this.appendOperationalLogs(logsDir);
+        }
+
+        public PrintStream getGlobalFileOutputStream(String name) throws IOException {
+            return ContentUsageUpdateProcess.this.getGlobalOutputStream(name);
         }
     }
 

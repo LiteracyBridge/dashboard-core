@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.Collection;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,6 +104,13 @@ public class LogFileParser {
    * RECORDED (secs): [0004]
    */
   public static final Pattern REST_OF_RECORDED = Pattern.compile("RECORDED\\s+\\(secs\\):\\s*(\\d+)\\s*");
+
+    /**
+     * matches the rest of the JUMP_TIME event. Matches
+     * JUMP_TIME:0132->0125
+     * and extracts the two sequence points.
+     */
+    public static final Pattern REST_OF_JUMP_TIME = Pattern.compile("JUMP_TIME:(\\d+)->(\\d+)");
   /**
    * Matches the pattern for a VOLTAGE DROP.  This can happen during any of the other patterns
    * <p/>
@@ -116,9 +122,8 @@ public class LogFileParser {
    */
   private static final Pattern VOLTAGE_DROP = Pattern.compile("VOLTAGE DROP:\\s*([0-9.]+)v\\s*in\\s*(\\d+)\\s+sec");
   static protected final Logger logger = LoggerFactory.getLogger(LogFileParser.class);
-  private final Collection<TalkingBookDataProcessor> eventCallbacks;
+  private final Collection<TalkingBookDataProcessor> eventProcessors;
   private final SyncProcessingContext context;
-  private final Map<String, String> categoryMap;
 
   //Last piece of content played
   private String contentLastPlayed = "";
@@ -126,18 +131,16 @@ public class LogFileParser {
     private String currentAction;
     private String currentParams;
 
-    public LogFileParser(TalkingBookDataProcessor eventCallbacks, SyncProcessingContext context,
-                       Map<String, String> categoryMap) {
-    this.eventCallbacks = Lists.newArrayList(eventCallbacks);
+    public LogFileParser(TalkingBookDataProcessor eventProcessors, SyncProcessingContext context) {
+    this.eventProcessors = Lists.newArrayList(eventProcessors);
     this.context = context;
-    this.categoryMap = categoryMap;
   }
 
-  public LogFileParser(Collection<TalkingBookDataProcessor> eventCallbacks, SyncProcessingContext context,
-                       Map<String, String> categoryMap) {
-    this.eventCallbacks = eventCallbacks;
+  public LogFileParser(
+      Collection<TalkingBookDataProcessor> eventProcessors,
+      SyncProcessingContext context) {
+    this.eventProcessors = eventProcessors;
     this.context = context;
-    this.categoryMap = categoryMap;
   }
 
   private static boolean checkForMatch(String action, String args, LogFilePosition filePosition,
@@ -170,8 +173,8 @@ public class LogFileParser {
     final BufferedReader br = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
 
     clearParseState();
-    for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-      eventCallback.onLogFileStart(fileName);
+    for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+      eventProcessor.onLogFileStart(fileName);
     }
 
     try {
@@ -193,8 +196,8 @@ public class LogFileParser {
         lineNumber++;
       }
     } finally {
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onLogFileEnd();
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onLogFileEnd();
       }
     }
     return numErrors;
@@ -300,14 +303,14 @@ public class LogFileParser {
           break;
 
         case paused:
-          for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-            eventCallback.onPause(logLineContext, contentLastPlayed);
+          for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+            eventProcessor.onPause(logLineContext, contentLastPlayed);
           }
           break;
 
         case unpaused:
-          for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-            eventCallback.onUnPause(logLineContext, contentLastPlayed);
+          for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+            eventProcessor.onUnPause(logLineContext, contentLastPlayed);
           }
           break;
 
@@ -324,9 +327,13 @@ public class LogFileParser {
           break;
 
         case shuttingDown:
-          for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-            eventCallback.onShuttingDown(logLineContext);
+          for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+            eventProcessor.onShuttingDown(logLineContext);
           }
+          break;
+
+      case jump_time:
+          result = processJumpTime(logLineContext, actionParams);
           break;
 
         default:
@@ -339,8 +346,8 @@ public class LogFileParser {
         try {
             final double voltsDropped = Double.parseDouble(voltageMatcher.group(1));
             final int time = Integer.parseInt(voltageMatcher.group(2));
-            for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-                eventCallback.onVoltageDrop(logLineContext, logAction, voltsDropped, time);
+            for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+                eventProcessor.onVoltageDrop(logLineContext, logAction, voltsDropped, time);
             }
         } catch (NumberFormatException e) {
             result = false;
@@ -362,8 +369,8 @@ public class LogFileParser {
     try {
       final int volume = Integer.parseInt(matcher.group(2));
       final double voltage = Double.parseDouble(matcher.group(3)) / 100;
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onPlay(logLineContext, contentId, volume, voltage);
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onPlay(logLineContext, contentId, volume, voltage);
       }
     } catch (NumberFormatException e) {
       final String errorString = String.format("%s : %d - Invalid number in Play action. Args=%s, Error=%s",
@@ -395,8 +402,8 @@ public class LogFileParser {
       final double voltage = Double.parseDouble(voltageParts[0]) / 100;
       final boolean isEnded = (voltageParts.length == 2) && (voltageParts[1].equalsIgnoreCase("ended"));
 
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onPlayed(logLineContext, contentId, timePlayed, timeSomething, volume, voltage, isEnded);
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onPlayed(logLineContext, contentId, timePlayed, timeSomething, volume, voltage, isEnded);
       }
     } catch (NumberFormatException e) {
       final String errorString = String.format("%s : %d - Invalid number in Played action. Args=%s, Error=%s",
@@ -409,9 +416,8 @@ public class LogFileParser {
   }
 
   protected boolean processCategory(final LogLineContext logLineContext, final String categoryId) {
-    final String category = categoryMap.get(categoryId.trim());
-    for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-      eventCallback.onCategory(logLineContext, (category != null ? category : categoryId));
+    for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+      eventProcessor.onCategory(logLineContext, categoryId);
     }
     return true;
   }
@@ -448,8 +454,8 @@ public class LogFileParser {
       } catch (Exception ex) {
           // Ignore.
       }
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onRecord(logLineContext, contentId, meaningless);
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onRecord(logLineContext, contentId, meaningless);
       }
     } catch (NumberFormatException e) {
       final String errorString = String.format("%s : %d - Invalid number in Record action. Args=%s, Error=%s",
@@ -469,8 +475,8 @@ public class LogFileParser {
 
     try {
       final int time = Integer.parseInt(matcher.group(1));
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onRecorded(logLineContext, time);
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onRecorded(logLineContext, time);
       }
     } catch (NumberFormatException e) {
       final String errorString = String.format("%s : %d - Invalid number in Record action. Args=%s, Error=%s",
@@ -482,7 +488,29 @@ public class LogFileParser {
     return true;
   }
 
-  protected boolean processSurvey(LogLineContext logLineContext, String args) {
+    protected boolean processJumpTime(LogLineContext logLineContext, String args) {
+        final Matcher matcher = REST_OF_JUMP_TIME.matcher(args);
+        if (!checkForMatch("Jump_time", args, logLineContext.logFilePosition, matcher)) {
+            return false;
+        }
+
+        try {
+            final int timeFrom = Integer.parseInt(matcher.group(1));
+            final int timeTo = Integer.parseInt(matcher.group(2));
+            for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+                eventProcessor.onJumpTime(logLineContext, timeFrom, timeTo);
+            }
+        } catch (NumberFormatException e) {
+            final String errorString = String.format("%s : %d - Invalid number in JUMP_TIME action. Args=%s, Error=%s",
+                logLineContext.logFilePosition.loggingFileName(),
+                logLineContext.logFilePosition.lineNumber, args, e.getMessage());
+            logger.trace(errorString);
+            return false;
+        }
+        return true;
+    }
+
+    protected boolean processSurvey(LogLineContext logLineContext, String args) {
     if (args == null) {
       final String errorString = String.format("%s : %d - No argument for Survey action.",
         logLineContext.logFilePosition.loggingFileName(),
@@ -492,16 +520,16 @@ public class LogFileParser {
     }
 
     if ("taken".equalsIgnoreCase(args)) {
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onSurvey(logLineContext, getContentLastPlayed());
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onSurvey(logLineContext, getContentLastPlayed());
       }
     } else if ("apply".equalsIgnoreCase(args)) {
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onSurveyCompleted(logLineContext, getContentLastPlayed(), true);
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onSurveyCompleted(logLineContext, getContentLastPlayed(), true);
       }
     } else if ("useless".equalsIgnoreCase(args)) {
-      for (TalkingBookDataProcessor eventCallback : eventCallbacks) {
-        eventCallback.onSurveyCompleted(logLineContext, getContentLastPlayed(), false);
+      for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+        eventProcessor.onSurveyCompleted(logLineContext, getContentLastPlayed(), false);
       }
     } else {
       final String errorString = String.format("%s : %d - Invalid argument for Surveyaction. Args=%s",

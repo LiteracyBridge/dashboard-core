@@ -2,7 +2,7 @@ package org.literacybridge;
 
 import junit.framework.TestCase;
 import org.junit.Test;
-import org.literacybridge.dashboard.ConsistencyChecker;
+import org.literacybridge.main.ConsistencyChecker;
 import org.literacybridge.dashboard.aggregation.AggregationOf;
 import org.literacybridge.dashboard.aggregation.Grouping;
 import org.literacybridge.dashboard.aggregation.StatAggregator;

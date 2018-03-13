@@ -27,10 +27,14 @@ public class TestUpdateAggregations {
         TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.talkingBook).size());
         TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.village).size());
 
-        TestCase.assertEquals(1,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(0, updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(AggregationOf.corruptedFiles));
+        TestCase.assertEquals(1,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(0, updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(
+            AggregationOf.corruptedFiles));
     }
 
     @Test
@@ -46,15 +50,22 @@ public class TestUpdateAggregations {
         TestCase.assertEquals(3, updateAggregations.getAggregationMap(Grouping.talkingBook).size());
         TestCase.assertEquals(2, updateAggregations.getAggregationMap(Grouping.village).size());
 
-        TestCase.assertEquals(600,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(400,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId2").get(AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(600,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(400,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId2").get(
+            AggregationOf.tenSecondPlays));
 
-        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook2").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(700,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook3").get(AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook2").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(700,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook3").get(
+            AggregationOf.tenSecondPlays));
 
-        TestCase.assertEquals(700,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage2").get(AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(700,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage2").get(
+            AggregationOf.tenSecondPlays));
 
     }
 
@@ -70,17 +81,26 @@ public class TestUpdateAggregations {
         TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.talkingBook).size());
         TestCase.assertEquals(1, updateAggregations.getAggregationMap(Grouping.village).size());
 
-        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.finishedPlays));
-        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(AggregationOf.surveyTaken));
+        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.finishedPlays));
+        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.contentId).get("TestContentId").get(
+            AggregationOf.surveyTaken));
 
-        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(AggregationOf.finishedPlays));
-        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(AggregationOf.surveyTaken));
+        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(
+            AggregationOf.finishedPlays));
+        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.talkingBook).get("TestTalkingBook").get(
+            AggregationOf.surveyTaken));
 
-        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(AggregationOf.tenSecondPlays));
-        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(AggregationOf.finishedPlays));
-        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(AggregationOf.surveyTaken));
+        TestCase.assertEquals(100,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(
+            AggregationOf.tenSecondPlays));
+        TestCase.assertEquals(200,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(
+            AggregationOf.finishedPlays));
+        TestCase.assertEquals(300,updateAggregations.getAggregationMap(Grouping.village).get("TestVillage").get(
+            AggregationOf.surveyTaken));
     }
 
 

@@ -5,7 +5,8 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.literacybridge.dashboard.ProcessingResult;
+import org.joda.time.LocalDateTime;
+import org.literacybridge.main.ProcessingResult;
 import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.DeploymentId;
@@ -26,9 +27,11 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 
@@ -44,6 +47,9 @@ public class DirectoryIterator {
             "(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s", Pattern.CASE_INSENSITIVE);
     public static final Pattern SYNC_TIME_PATTERN_V2 = Pattern.compile(
             "(\\d+)y(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s-(.*)", Pattern.CASE_INSENSITIVE);
+    public static final Pattern LB_TIME_PATTERN = Pattern.compile(
+        "(\\d+)y(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s.*", Pattern.CASE_INSENSITIVE);
+
     // Note the (?!.*conflicted copy.*) negative lookahead at the beginning. This is to avoid
     // the Dropbox files 'foo (JOE's conflicted copy yyyy-mm-dd).bar'
     private static final Pattern TBDATA_PATTERN_V2 = Pattern.compile(
@@ -64,6 +70,20 @@ public class DirectoryIterator {
     private DirectoryFormat format;
     private ProcessingResult result;
     ContentUsageUpdateProcess.UpdateUsageContext context;
+
+    public static LocalDateTime lbToIsoTimestamp(String lbTimestamp) {
+        Matcher matchv2 = DirectoryIterator.LB_TIME_PATTERN.matcher(lbTimestamp);
+        if (matchv2.matches()) {
+            LocalDateTime dateTime = new LocalDateTime(Integer.parseInt(matchv2.group(1)),  // year
+                Integer.parseInt(matchv2.group(2)),     // month
+                Integer.parseInt(matchv2.group(3)),     // day
+                Integer.parseInt(matchv2.group(4)),     // hour
+                Integer.parseInt(matchv2.group(5)),     // minute
+                Integer.parseInt(matchv2.group(6)));    // second
+            return dateTime;
+        }
+        return null;
+    }
 
     // This is a horrible hack. We want to run appendOperationalLogs() once per input .zip file,
     // but the code's control flow is such that there is no good place to do so. The
@@ -212,7 +232,15 @@ public class DirectoryIterator {
         return retVal;
     }
 
-    private static StatsPackageManifest readInManifest(File manifestFile, DirectoryFormat format,
+    /**
+     * Reads a manifest from a StatsPackageManifest.json file.
+     * @param manifestFile File with JSON
+     * @param format Optinal, DirectoryFormat.Sync (very old) or DirectoryFormat.Archive.
+     * @param strict If this DirectoryIterator was created with "strict"
+     * @return The deserialized StatsPackageManifest file.
+     * @throws IOException if the manifest can't be read.
+     */
+    private static StatsPackageManifest readManifestFile(File manifestFile, DirectoryFormat format,
                                                        boolean strict) throws IOException {
 
         StatsPackageManifest manifest = mapper.readValue(manifestFile, StatsPackageManifest.class);
@@ -238,11 +266,11 @@ public class DirectoryIterator {
         }
     }
 
-    protected void process(final File root, DirectoryCallbacks callbacks) throws Exception {
+    private void process(final File root, DirectoryCallbacks callbacks) throws Exception {
         StatsPackageManifest manifest = null;
         File manifestFile = getManifestFile(root);
         if (manifestFile.exists()) {
-            manifest = readInManifest(manifestFile, format, strict);
+            manifest = readManifestFile(manifestFile, format, strict);
             format = DirectoryFormat.fromVersion(manifest.formatVersion);
         } else {
             if (format == null) {
@@ -254,15 +282,22 @@ public class DirectoryIterator {
                 format = DirectoryFormat.Sync;
             }
 
-            System.out.println("Generating manifest.");
+            callbacks.creatingManifest(root);
             manifest = generateManifest(root, format);
-            System.out.println("Done generating manifest, processing resuming.");
+            callbacks.createdManifest();
 
         }
 
         process(root, manifest, callbacks);
     }
 
+    /**
+     * Walks the directory to generate a manifest.
+     * @param root
+     * @param format
+     * @return
+     * @throws Exception
+     */
     private StatsPackageManifest generateManifest(File root, DirectoryFormat format)
             throws Exception {
         this.format = format;
@@ -374,10 +409,8 @@ public class DirectoryIterator {
             throws Exception {
         logger.debug(String.format("    device: %s, deployment: %s", deviceAndDeploymentDir.getName(),
                                    deploymentId));
-        System.out.println(" " + deploymentId.toString());
         for (File villageDir : deviceAndDeploymentDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
             if (callbacks.startVillage(villageDir.getName().trim())) {
-                System.out.println("   " + villageDir.getName());
                 processVillage(root, device, deploymentId, villageDir, callbacks);
                 callbacks.endVillage();
             }
@@ -389,7 +422,6 @@ public class DirectoryIterator {
         logger.debug(String.format("      village: %s", villageDir.getName()));
         for (File talkingBookDir : villageDir.listFiles((FileFilter) DirectoryFileFilter.DIRECTORY)) {
             if (callbacks.startTalkingBook(talkingBookDir.getName().trim())) {
-                System.out.println("     " + talkingBookDir.getName().trim());
                 processTalkingBook(root, device, deploymentId, villageDir.getName(), talkingBookDir,
                                    callbacks);
                 callbacks.endTalkingBook();

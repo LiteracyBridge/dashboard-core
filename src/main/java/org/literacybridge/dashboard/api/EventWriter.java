@@ -1,10 +1,11 @@
 package org.literacybridge.dashboard.api;
 
 
-import org.literacybridge.stats.model.events.PlayedEvent;
-import org.literacybridge.stats.model.events.RecordEvent;
-import org.literacybridge.stats.model.events.SurveyEvent;
-import org.literacybridge.stats.model.events.TBData;
+import org.literacybridge.dashboard.dbTables.events.JumpEvent;
+import org.literacybridge.dashboard.dbTables.events.PlayedEvent;
+import org.literacybridge.dashboard.dbTables.events.RecordEvent;
+import org.literacybridge.dashboard.dbTables.events.SurveyEvent;
+import org.literacybridge.stats.formats.logFile.LogLineContext;
 
 import java.io.IOException;
 
@@ -13,10 +14,14 @@ import java.io.IOException;
  */
 public interface EventWriter {
 
-  void writePlayEvent(PlayedEvent playEvent) throws IOException;
+  void writePlayEvent(PlayedEvent playEvent,
+      LogLineContext context) throws IOException;
 
-  void writeRecordEvent(RecordEvent recordEvent) throws IOException;
+  void writeRecordEvent(RecordEvent recordEvent,
+      LogLineContext context) throws IOException;
 
-  void writeSurveyEvent(SurveyEvent surveyEvent) throws IOException;
+  void writeSurveyEvent(SurveyEvent surveyEvent,
+      LogLineContext context) throws IOException;
 
+  void writeJumpEvent(JumpEvent jumpEvent, LogLineContext context) throws IOException;
 }

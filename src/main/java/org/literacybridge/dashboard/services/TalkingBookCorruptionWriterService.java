@@ -1,7 +1,7 @@
 package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
-import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
+import org.literacybridge.dashboard.dbTables.syncOperations.TalkingBookCorruption;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 

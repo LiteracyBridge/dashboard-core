@@ -10,7 +10,8 @@ public class TestSyncProcessingContext {
   @Test
   public void testSyncDirectoryNameParsing() {
 
-    SyncProcessingContext context = new SyncProcessingContext("7m15d18h33m52s", "TB1", "Village1", "ContentPackage", "2013-03", "Device1");
+    SyncProcessingContext context = new SyncProcessingContext("7m15d18h33m52s", "TB1", "Village1", "ContentPackage", "2013-03", "TestProj", "Device1", null,
+        null);
 
     LocalDateTime timestamp = context.syncTime;
     TestCase.assertEquals(2013, timestamp.getYear());

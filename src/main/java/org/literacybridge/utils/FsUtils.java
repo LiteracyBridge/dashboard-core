@@ -13,7 +13,7 @@ import java.util.zip.ZipFile;
 /**
  */
 public class FsUtils {
-  public static final String FsAgnostify(String fsPath) {
+  public static String FsAgnostify(String fsPath) {
     return fsPath.replace('/', File.separatorChar);
   }
 
@@ -26,7 +26,7 @@ public class FsUtils {
      * than what was given. If the file does not exist, the name will be as given (because no substitution
      * was performed).
      */
-    private static final File FileIgnoreCaseHelper(File parent, final String child) {
+    private static File FileIgnoreCaseHelper(File parent, final String child) {
         File retval = new File(parent, child);
         // Check for name that matches, ignoring case.
         if (!retval.exists()) {
@@ -58,7 +58,7 @@ public class FsUtils {
      * @param pathToChild A sequence of path components, like ["a", "b", "c"], to look for File/a/b/c.
      * @return A File with the given path.
      */
-    public static final File FileIgnoreCase(File parent, String... pathToChild) {
+    public static File FileIgnoreCase(File parent, String... pathToChild) {
         File file = parent;
         // Add the child parts of the path, one at a time.
         for (String child : pathToChild) {
@@ -78,7 +78,7 @@ public class FsUtils {
 
   public static void unzip(File zipFile, File rootDir) throws IOException {
     ZipFile zip = new ZipFile(zipFile);
-    Enumeration<ZipEntry> entries = (Enumeration<ZipEntry>) zip.entries();
+    Enumeration<? extends ZipEntry> entries = zip.entries();
     while (entries.hasMoreElements()) {
       ZipEntry entry = entries.nextElement();
       java.io.File f = new java.io.File(rootDir, entry.getName());

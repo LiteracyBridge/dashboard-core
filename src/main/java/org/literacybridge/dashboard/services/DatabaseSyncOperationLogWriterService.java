@@ -2,9 +2,9 @@ package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
 import org.literacybridge.dashboard.api.SyncOperationLogWriter;
-import org.literacybridge.dashboard.model.syncOperations.SyncOperationLog;
-import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
-import org.literacybridge.stats.model.TbDataLine;
+import org.literacybridge.dashboard.dbTables.syncOperations.SyncOperationLog;
+import org.literacybridge.dashboard.dbTables.syncOperations.TalkingBookCorruption;
+import org.literacybridge.dashboard.dbTables.TbDataLine;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

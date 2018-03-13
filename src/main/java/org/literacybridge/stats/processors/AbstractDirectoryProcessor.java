@@ -1,10 +1,11 @@
 package org.literacybridge.stats.processors;
 
-import org.literacybridge.dashboard.ProcessingResult;
+import org.literacybridge.main.ProcessingResult;
 import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
 import org.literacybridge.stats.model.*;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 
@@ -29,7 +30,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
   }
 
   @Override
-  public boolean startProcessing(File root, StatsPackageManifest manifest, DirectoryFormat format) throws Exception {
+  public boolean startProcessing(@Nonnull File root, StatsPackageManifest manifest, @Nonnull DirectoryFormat format) throws Exception {
     this.currRoot = root;
     this.format = format;
     this.manifest = manifest;
@@ -44,7 +45,7 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
 
 
   @Override
-  public boolean startDeviceOperationalData(String device) {
+  public boolean startDeviceOperationalData(@Nonnull String device) {
       currDevice = device;
       return false;
   }
@@ -105,4 +106,14 @@ abstract public class AbstractDirectoryProcessor implements DirectoryCallbacks {
   @Override
   public void processSyncDir(SyncDirId syncDirId, File syncDir) throws Exception {
   }
+
+    @Override
+    public void creatingManifest(File root) {
+
+    }
+
+    @Override
+    public void createdManifest() {
+
+    }
 }

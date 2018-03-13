@@ -1,7 +1,7 @@
 package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
-import org.literacybridge.dashboard.model.syncOperations.UpdateValidationError;
+import org.literacybridge.dashboard.dbTables.syncOperations.UpdateValidationError;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

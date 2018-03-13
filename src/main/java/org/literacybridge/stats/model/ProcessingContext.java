@@ -1,5 +1,7 @@
 package org.literacybridge.stats.model;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.regex.Pattern;
 
 /**
@@ -12,13 +14,15 @@ public class ProcessingContext {
   public static final Pattern SYNC_TIME_PATTERN = Pattern.compile("(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s");
   public final DeploymentId deploymentId;
   public final String village;
+  public final String recipientId;
   public final String talkingBookId;
   public final String deviceSyncedFrom;
 
 
-  public ProcessingContext(String talkingBookId, String village, String contentUpdate, String deviceSyncedFrom) {
+  public ProcessingContext(String talkingBookId, String village, String contentUpdate, String deviceSyncedFrom, String recipientId) {
     this.talkingBookId = talkingBookId;
     this.village = village;
+    this.recipientId = recipientId;
     this.deploymentId = DeploymentId.parseContentUpdate(contentUpdate);
     this.deviceSyncedFrom = deviceSyncedFrom;
   }
@@ -37,6 +41,7 @@ public class ProcessingContext {
     if (talkingBookId != null ? !talkingBookId.equals(that.talkingBookId) : that.talkingBookId != null)
       return false;
     if (village != null ? !village.equals(that.village) : that.village != null) return false;
+    if (recipientId != null ? !recipientId.equals(that.recipientId) : that.recipientId != null) return false;
 
     return true;
   }
@@ -52,11 +57,14 @@ public class ProcessingContext {
 
   @Override
   public String toString() {
-    return new org.apache.commons.lang.builder.ToStringBuilder(this)
-      .append("contentUpdateId", deploymentId)
-      .append("village", village)
-      .append("talkingBookId", talkingBookId)
-      .append("deviceSyncedFrom", deviceSyncedFrom)
-      .toString();
+      org.apache.commons.lang.builder.ToStringBuilder sb = new org.apache.commons.lang.builder.ToStringBuilder(
+          this);
+      sb.append("contentUpdateId", deploymentId)
+          .append("village", village);
+      if (StringUtils.isNotEmpty(recipientId))
+          sb.append(recipientId);
+      sb.append("talkingBookId", talkingBookId)
+          .append("deviceSyncedFrom", deviceSyncedFrom);
+      return sb.toString();
   }
 }

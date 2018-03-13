@@ -1,8 +1,8 @@
 package org.literacybridge.dashboard.api;
 
-import org.literacybridge.dashboard.model.syncOperations.SyncOperationLog;
-import org.literacybridge.dashboard.model.syncOperations.TalkingBookCorruption;
-import org.literacybridge.stats.model.TbDataLine;
+import org.literacybridge.dashboard.dbTables.syncOperations.SyncOperationLog;
+import org.literacybridge.dashboard.dbTables.syncOperations.TalkingBookCorruption;
+import org.literacybridge.dashboard.dbTables.TbDataLine;
 
 import java.io.IOException;
 

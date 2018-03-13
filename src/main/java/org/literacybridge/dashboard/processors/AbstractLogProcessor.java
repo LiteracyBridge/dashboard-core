@@ -7,7 +7,7 @@ import org.literacybridge.stats.formats.logFile.LogLineContext;
 import org.literacybridge.stats.formats.statsFile.StatsFile;
 import org.literacybridge.stats.model.ProcessingContext;
 import org.literacybridge.stats.model.SyncProcessingContext;
-import org.literacybridge.stats.model.TbDataLine;
+import org.literacybridge.dashboard.dbTables.TbDataLine;
 
 import java.io.IOException;
 
@@ -27,14 +27,14 @@ abstract public class AbstractLogProcessor implements TalkingBookDataProcessor {
   }
 
   @Override
-  public void processFlashData(SyncProcessingContext context, FlashData flashData) throws IOException {
+  public void onSyncProcessingStart(SyncProcessingContext context) {
 
   }
 
   @Override
-  public void processCorruptFlashData(SyncProcessingContext context, String flashDataPath, String errorMessage) {
+  public void onSyncProcessingEnd(SyncProcessingContext context) {
 
-  }
+   }
 
   @Override
   public void onPlay(LogLineContext context, String contentId, int volume, double voltage) {
@@ -82,7 +82,12 @@ abstract public class AbstractLogProcessor implements TalkingBookDataProcessor {
 
   }
 
-  @Override
+    @Override
+    public void onJumpTime(LogLineContext logLineContext, int timeFrom, int timeTo) {
+
+    }
+
+    @Override
   public void onShuttingDown(LogLineContext context) {
 
   }
@@ -99,6 +104,16 @@ abstract public class AbstractLogProcessor implements TalkingBookDataProcessor {
 
   @Override
   public void onLogFileEnd() {
+
+  }
+
+  @Override
+  public void processFlashData(SyncProcessingContext context, FlashData flashData) throws IOException {
+
+  }
+
+  @Override
+  public void processCorruptFlashData(SyncProcessingContext context, String flashDataPath, String errorMessage) {
 
   }
 

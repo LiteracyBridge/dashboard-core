@@ -1,8 +1,9 @@
 package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
-import org.literacybridge.dashboard.model.contentUsage.SyncAggregation;
+import org.literacybridge.dashboard.dbTables.contentUsage.SyncAggregation;
 import org.literacybridge.dashboard.api.SyncAggregationWriter;
+import org.literacybridge.stats.model.SyncProcessingContext;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +22,8 @@ public class SyncAggregationWriterService implements SyncAggregationWriter {
 
   @Override
   @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
-  public void writeAggregation(SyncAggregation aggregation) throws IOException {
+  public void writeAggregation(SyncAggregation aggregation,
+      SyncProcessingContext context) throws IOException {
     sessionFactory.getCurrentSession().saveOrUpdate(aggregation);
   }
 

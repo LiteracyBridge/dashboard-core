@@ -119,4 +119,14 @@ public class FilteringProcessor implements DirectoryCallbacks {
   public void processSyncDir(SyncDirId syncDirId, File syncDir) throws Exception {
     callbacks.processSyncDir(syncDirId, syncDir);
   }
+
+    @Override
+    public void creatingManifest(File root) {
+
+    }
+
+    @Override
+    public void createdManifest() {
+
+    }
 }

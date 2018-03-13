@@ -3,8 +3,8 @@ package org.literacybridge.dashboard.services;
 import org.hibernate.Query;
 import org.hibernate.SessionFactory;
 import org.joda.time.DateTime;
-import org.literacybridge.dashboard.model.syncOperations.UsageUpdateRecord;
-import org.literacybridge.dashboard.model.syncOperations.UpdateValidationError;
+import org.literacybridge.dashboard.dbTables.syncOperations.UsageUpdateRecord;
+import org.literacybridge.dashboard.dbTables.syncOperations.UpdateValidationError;
 import org.literacybridge.stats.model.validation.ValidationError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -56,6 +56,7 @@ public class UpdateRecordWriterService {
   }
 
   @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
+  @SuppressWarnings({"unchecked"})
   public List<UsageUpdateRecord> list() throws IOException {
     final String hqlResult = "from UsageUpdateRecord ur where ur.deletedTime != '1974-1-1'";
     final Query  hqlQuery = sessionFactory.getCurrentSession().createQuery(hqlResult);

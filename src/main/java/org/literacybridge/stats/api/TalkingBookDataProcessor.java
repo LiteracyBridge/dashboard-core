@@ -6,7 +6,7 @@ import org.literacybridge.stats.formats.logFile.LogLineContext;
 import org.literacybridge.stats.formats.statsFile.StatsFile;
 import org.literacybridge.stats.model.ProcessingContext;
 import org.literacybridge.stats.model.SyncProcessingContext;
-import org.literacybridge.stats.model.TbDataLine;
+import org.literacybridge.dashboard.dbTables.TbDataLine;
 
 import java.io.IOException;
 
@@ -14,18 +14,14 @@ import java.io.IOException;
  * @author willpugh
  */
 public interface TalkingBookDataProcessor {
-
   //+++++++++++++++Directory Processing ++++++++++++++++++//
   void onTalkingBookStart(ProcessingContext context);
 
   void onTalkingBookEnd(ProcessingContext context);
 
-  //+++++++++++++++Processing Flash Data ++++++++++++++++++//
+  void onSyncProcessingStart(SyncProcessingContext context);
 
-  void processFlashData(SyncProcessingContext context, FlashData flashData) throws IOException;
-
-  void processCorruptFlashData(SyncProcessingContext context, String flashDataPath, String errorMessage);
-
+  void onSyncProcessingEnd(SyncProcessingContext context);
 
   //+++++++++++++++Processing Log Files ++++++++++++++++++//
   void onPlay(LogLineContext context, String contentId, int volume, double voltage);
@@ -55,6 +51,11 @@ public interface TalkingBookDataProcessor {
 
   void onLogFileEnd();
 
+  //+++++++++++++++Processing Flash Data ++++++++++++++++++//
+  void processFlashData(SyncProcessingContext context, FlashData flashData) throws IOException;
+
+  void processCorruptFlashData(SyncProcessingContext context, String flashDataPath, String errorMessage);
+
   //+++++++++++++++Processing Stats Files ++++++++++++++++++//
   void processStatsFile(SyncProcessingContext context, String contentId, StatsFile statsFile);
 
@@ -62,4 +63,5 @@ public interface TalkingBookDataProcessor {
 
   void processTbDataLine(TbDataLine tbDataLine);
 
+    void onJumpTime(LogLineContext logLineContext, int timeFrom, int timeTo);
 }
