@@ -332,11 +332,19 @@ public class LogFileParser {
           }
           break;
 
-      case jump_time:
+        case jump_time:
           result = processJumpTime(logLineContext, actionParams);
           break;
 
-        default:
+        case faster:
+          result = processFaster(logLineContext);
+          break;
+
+        case slower:
+          result = processSlower(logLineContext);
+          break;
+
+      default:
           logger.error("Illegal action found " + logAction.actionName);
           result = false;
           break;
@@ -510,7 +518,21 @@ public class LogFileParser {
         return true;
     }
 
-    protected boolean processSurvey(LogLineContext logLineContext, String args) {
+  protected boolean processFaster(final LogLineContext logLineContext) {
+    for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+      eventProcessor.onFaster(logLineContext);
+    }
+    return true;
+  }
+
+  protected boolean processSlower(final LogLineContext logLineContext) {
+    for (TalkingBookDataProcessor eventProcessor : eventProcessors) {
+      eventProcessor.onSlower(logLineContext);
+    }
+    return true;
+  }
+
+  protected boolean processSurvey(LogLineContext logLineContext, String args) {
     if (args == null) {
       final String errorString = String.format("%s : %d - No argument for Survey action.",
         logLineContext.logFilePosition.loggingFileName(),

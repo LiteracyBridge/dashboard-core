@@ -87,7 +87,17 @@ abstract public class AbstractLogProcessor implements TalkingBookDataProcessor {
 
     }
 
-    @Override
+  @Override
+  public void onFaster(LogLineContext logLineContext) {
+
+  }
+
+  @Override
+  public void onSlower(LogLineContext logLineContext) {
+
+  }
+
+  @Override
   public void onShuttingDown(LogLineContext context) {
 
   }

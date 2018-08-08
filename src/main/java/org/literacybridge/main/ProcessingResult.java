@@ -28,6 +28,18 @@ public class ProcessingResult extends ResultTree {
     }
 
     /**
+     * Records that the project had no TalkingBookData.
+     * @param project The project.
+     * @param parent The directory that is missing a subdirectory.
+     * @param directory The missing subdirectory.
+     */
+    public void addProjectHasMissingDirectory(String project,
+        String parent,
+        String directory) {
+        addAttribute(Arrays.asList(project), "MissingDirectory", parent + '/' + directory);
+     }
+
+    /**
      * Adds a deployment for a project. Note that the project is the project in whose
      * context the TBLoader operation was performed. Any Talking Books that had been
      * previously part of a different project will have statistics for that other project.
@@ -259,4 +271,5 @@ public class ProcessingResult extends ResultTree {
         }
         addAttribute(path, "OperationaLogsAppended", newCount.toString());
     }
+
 }

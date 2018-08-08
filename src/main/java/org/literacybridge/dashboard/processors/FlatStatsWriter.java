@@ -7,9 +7,11 @@ import org.literacybridge.dashboard.dbTables.TbDataLine;
 import org.literacybridge.dashboard.dbTables.contentUsage.SyncAggregation;
 import org.literacybridge.dashboard.dbTables.events.Event;
 import org.literacybridge.dashboard.dbTables.events.EventUniqueId;
+import org.literacybridge.dashboard.dbTables.events.FasterEvent;
 import org.literacybridge.dashboard.dbTables.events.JumpEvent;
 import org.literacybridge.dashboard.dbTables.events.PlayedEvent;
 import org.literacybridge.dashboard.dbTables.events.RecordEvent;
+import org.literacybridge.dashboard.dbTables.events.SlowerEvent;
 import org.literacybridge.dashboard.dbTables.events.SurveyEvent;
 import org.literacybridge.dashboard.dbTables.syncOperations.SyncOperationLog;
 import org.literacybridge.dashboard.dbTables.syncOperations.TalkingBookCorruption;
@@ -130,6 +132,24 @@ public class FlatStatsWriter implements TalkingBookSyncWriter {
     }
 
     @Override
+    public void writeFasterEvent(FasterEvent event, LogLineContext logLineContext) throws IOException {
+        SyncProcessingContext context = logLineContext.context;
+        PrintStream ps = getStream(TBEVENTS_LOG);
+        LogWriter lw = new LogWriter(ps, logLineContext.context.syncTime.toDateTime(DateTimeZone.UTC), "faster");
+        appendEventCommonFields(lw, context, event);
+        lw.write();
+    }
+
+    @Override
+    public void writeSlowerEvent(SlowerEvent event, LogLineContext logLineContext) throws IOException {
+        SyncProcessingContext context = logLineContext.context;
+        PrintStream ps = getStream(TBEVENTS_LOG);
+        LogWriter lw = new LogWriter(ps, logLineContext.context.syncTime.toDateTime(DateTimeZone.UTC), "slower");
+        appendEventCommonFields(lw, context, event);
+        lw.write();
+    }
+
+    @Override
     public void writeAggregation(SyncAggregation aggregation,
         SyncProcessingContext context) throws IOException
     {
@@ -157,11 +177,12 @@ public class FlatStatsWriter implements TalkingBookSyncWriter {
             lw.append("deployment_timestamp",context.deploymentTime);
         }
 
-        double effCompletions = 0.3 *  aggregation.getCountQuarter() +
-                                0.6 *  aggregation.getCountHalf() +
-                                0.83 * aggregation.getCountThreeQuarters() +
-                                       aggregation.getCountCompleted();
-        lw.append("effective_completions",effCompletions);
+        // This number has no known utility. Keeping the calculation for historical reasons.
+//        double effCompletions = 0.3 *  aggregation.getCountQuarter() +
+//                                0.6 *  aggregation.getCountHalf() +
+//                                0.83 * aggregation.getCountThreeQuarters() +
+//                                       aggregation.getCountCompleted();
+//        lw.append("effective_completions",effCompletions);
         lw.write();
     }
 

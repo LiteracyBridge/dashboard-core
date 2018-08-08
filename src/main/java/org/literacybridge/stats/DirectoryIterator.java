@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -66,6 +68,7 @@ public class DirectoryIterator {
     private static final ObjectMapper mapper = new ObjectMapper();
     protected static final Logger logger = LoggerFactory.getLogger(DirectoryIterator.class);
     private final boolean strict;
+    private final File root;
     private final File[] rootFiles;
     private DirectoryFormat format;
     private ProcessingResult result;
@@ -101,6 +104,7 @@ public class DirectoryIterator {
 
 
     public DirectoryIterator(File root, DirectoryFormat format, boolean strict, ContentUsageUpdateProcess.UpdateUsageContext context) {
+        this.root = root;
         this.rootFiles = rootInFunnyZip(root);
         this.strict = strict;
         this.format = format;
@@ -235,7 +239,7 @@ public class DirectoryIterator {
     /**
      * Reads a manifest from a StatsPackageManifest.json file.
      * @param manifestFile File with JSON
-     * @param format Optinal, DirectoryFormat.Sync (very old) or DirectoryFormat.Archive.
+     * @param format Optional, DirectoryFormat.Sync (very old) or DirectoryFormat.Archive.
      * @param strict If this DirectoryIterator was created with "strict"
      * @return The deserialized StatsPackageManifest file.
      * @throws IOException if the manifest can't be read.
@@ -262,7 +266,11 @@ public class DirectoryIterator {
     public void process(DirectoryCallbacks callbacks) throws Exception {
         for (File currRoot : rootFiles) {
             logger.debug(String.format("project: %s", currRoot.getName()));
-            process(currRoot, callbacks);
+            try {
+                process(currRoot, callbacks);
+            } catch (NoTalkingBookDataException e) {
+                result.addProjectHasMissingDirectory(currRoot.getName(), e.getParent(), e.getMissingDirectory());
+            }
         }
     }
 
@@ -326,7 +334,10 @@ public class DirectoryIterator {
 
             TreeSet<DeploymentPerDevice> deploymentPerDevices = loadDeviceAndDeployments(root);
 
-            if (!deploymentPerDevices.isEmpty()) {
+            if (deploymentPerDevices.isEmpty()) {
+                String relativeDataPath = root.getAbsolutePath().substring(this.root.getAbsolutePath().length()+1);
+                throw new NoTalkingBookDataException(relativeDataPath, TALKING_BOOK_ROOT_V2);
+            } else {
                 String tbLoaderDevice = null;
                 boolean tbDataForTbLoaderProcessed = false;
                 boolean processTbLoaderDevice = false;
@@ -378,9 +389,6 @@ public class DirectoryIterator {
                 if (processTbLoaderDevice) {
                     callbacks.endDeviceOperationalData();
                 }
-            } else {
-                throw new IllegalArgumentException(
-                        "No records found in this directory.  Make sure the format in the manifest is correct?  Make sure the directory structure is correct?");
             }
 
             // For each "tb loader and deployment" (pair),
@@ -522,5 +530,22 @@ public class DirectoryIterator {
 
     public DirectoryFormat getFormat() {
         return format;
+    }
+
+    public class NoTalkingBookDataException extends IllegalArgumentException {
+        private String parent;
+        private String directory;
+        public NoTalkingBookDataException(String parent, String directory) {
+            super("Missing required directory");
+            this.parent = parent;
+            this.directory = directory;
+        }
+
+        public String getParent() {
+            return parent;
+        }
+        public String getMissingDirectory() {
+            return directory;
+        }
     }
 }

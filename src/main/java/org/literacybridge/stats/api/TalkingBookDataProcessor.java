@@ -64,4 +64,7 @@ public interface TalkingBookDataProcessor {
   void processTbDataLine(TbDataLine tbDataLine);
 
     void onJumpTime(LogLineContext logLineContext, int timeFrom, int timeTo);
+
+  void onFaster(LogLineContext logLineContext);
+  void onSlower(LogLineContext logLineContext);
 }

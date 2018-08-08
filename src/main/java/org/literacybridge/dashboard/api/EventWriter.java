@@ -1,9 +1,11 @@
 package org.literacybridge.dashboard.api;
 
 
+import org.literacybridge.dashboard.dbTables.events.FasterEvent;
 import org.literacybridge.dashboard.dbTables.events.JumpEvent;
 import org.literacybridge.dashboard.dbTables.events.PlayedEvent;
 import org.literacybridge.dashboard.dbTables.events.RecordEvent;
+import org.literacybridge.dashboard.dbTables.events.SlowerEvent;
 import org.literacybridge.dashboard.dbTables.events.SurveyEvent;
 import org.literacybridge.stats.formats.logFile.LogLineContext;
 
@@ -24,4 +26,6 @@ public interface EventWriter {
       LogLineContext context) throws IOException;
 
   void writeJumpEvent(JumpEvent jumpEvent, LogLineContext context) throws IOException;
+  void writeFasterEvent(FasterEvent fasterEvent, LogLineContext context) throws IOException;
+  void writeSlowerEvent(SlowerEvent slowerEvent, LogLineContext context) throws IOException;
 }

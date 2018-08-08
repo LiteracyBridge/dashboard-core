@@ -40,8 +40,7 @@ public class EventUniqueId implements Serializable {
     id.updateInYear = context.context.deploymentId.update;
 
     if (context.logLineInfo == null) {
-      return null;
-
+      return id;
     }
 
     id.setHouseholdRotation(context.logLineInfo.householdRotation);

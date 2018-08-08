@@ -1,9 +1,11 @@
 package org.literacybridge.dashboard.services;
 
 import org.hibernate.SessionFactory;
+import org.literacybridge.dashboard.dbTables.events.FasterEvent;
 import org.literacybridge.dashboard.dbTables.events.JumpEvent;
 import org.literacybridge.dashboard.dbTables.events.PlayedEvent;
 import org.literacybridge.dashboard.dbTables.events.RecordEvent;
+import org.literacybridge.dashboard.dbTables.events.SlowerEvent;
 import org.literacybridge.dashboard.dbTables.events.SurveyEvent;
 import org.literacybridge.dashboard.api.EventWriter;
 import org.literacybridge.stats.formats.logFile.LogLineContext;
@@ -49,4 +51,14 @@ public class DatabaseEventWriterService implements EventWriter {
     public void writeJumpEvent(JumpEvent jumpEvent, LogLineContext context) throws IOException {
         // Not written to the database
     }
+
+  @Override
+  public void writeFasterEvent(FasterEvent fasterEvent, LogLineContext context) throws IOException {
+    // Not written to the database
+  }
+
+  @Override
+  public void writeSlowerEvent(SlowerEvent slowerEvent, LogLineContext context) throws IOException {
+    // Not written to the database
+  }
 }

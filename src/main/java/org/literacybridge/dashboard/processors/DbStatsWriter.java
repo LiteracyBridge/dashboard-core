@@ -5,7 +5,9 @@ import org.literacybridge.dashboard.api.SyncAggregationWriter;
 import org.literacybridge.dashboard.api.SyncOperationLogWriter;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
 import org.literacybridge.dashboard.dbTables.contentUsage.SyncAggregation;
+import org.literacybridge.dashboard.dbTables.events.FasterEvent;
 import org.literacybridge.dashboard.dbTables.events.JumpEvent;
+import org.literacybridge.dashboard.dbTables.events.SlowerEvent;
 import org.literacybridge.dashboard.dbTables.syncOperations.SyncOperationLog;
 import org.literacybridge.dashboard.dbTables.syncOperations.TalkingBookCorruption;
 import org.literacybridge.dashboard.dbTables.TbDataLine;
@@ -60,7 +62,17 @@ public class DbStatsWriter implements TalkingBookSyncWriter {
         // We don't record these in the database.
     }
 
-    @Override
+  @Override
+  public void writeFasterEvent(FasterEvent fasterEvent, LogLineContext context) throws IOException {
+    // We don't record these in the database.
+  }
+
+  @Override
+  public void writeSlowerEvent(SlowerEvent slowerEvent, LogLineContext context) throws IOException {
+    // We don't record these in the database.
+  }
+
+  @Override
   public void writeAggregation(SyncAggregation aggregation,
       SyncProcessingContext context) throws IOException {
     syncAggregationWriter.writeAggregation(aggregation, context);

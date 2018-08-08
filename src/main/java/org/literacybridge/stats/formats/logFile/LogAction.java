@@ -18,7 +18,9 @@ public enum LogAction {
   unpaused("unpaused"),
   survey("survey"),
   shuttingDown("shutting"),
-  jump_time("jump_time");
+  jump_time("jump_time"),
+  faster("faster"),
+  slower("slower");
 
   static protected final Logger logger = LoggerFactory.getLogger(LogAction.class);
 

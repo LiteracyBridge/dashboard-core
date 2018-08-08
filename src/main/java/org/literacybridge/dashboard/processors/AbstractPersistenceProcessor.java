@@ -6,9 +6,11 @@ import org.literacybridge.dashboard.api.EventWriter;
 import org.literacybridge.dashboard.api.TalkingBookSyncWriter;
 import org.literacybridge.dashboard.dbTables.TbDataLine;
 import org.literacybridge.dashboard.dbTables.events.Event;
+import org.literacybridge.dashboard.dbTables.events.FasterEvent;
 import org.literacybridge.dashboard.dbTables.events.JumpEvent;
 import org.literacybridge.dashboard.dbTables.events.PlayedEvent;
 import org.literacybridge.dashboard.dbTables.events.RecordEvent;
+import org.literacybridge.dashboard.dbTables.events.SlowerEvent;
 import org.literacybridge.dashboard.dbTables.events.SurveyEvent;
 import org.literacybridge.stats.formats.logFile.LogAction;
 import org.literacybridge.stats.formats.logFile.LogLineContext;
@@ -43,7 +45,7 @@ public class AbstractPersistenceProcessor extends AbstractLogProcessor {
   protected String         playContentId = null;
 
   //Track content aggregations through log files, in case there is no flashdata
-  protected LogAggregationProcessor logAggregations    = new LogAggregationProcessor(10);
+  protected LogAggregationProcessor logAggregations    = new LogAggregationProcessor();
 
     public AbstractPersistenceProcessor(Collection<TalkingBookSyncWriter> writers) {
     this.writers = writers;
@@ -280,7 +282,38 @@ public class AbstractPersistenceProcessor extends AbstractLogProcessor {
         }
     }
 
-    @Override
+  @Override
+  public void onFaster(LogLineContext logLineContext) {
+    if (playLogLineContext != null && playContentId != null) {
+      FasterEvent fasterEvent = new FasterEvent();
+      Event.populateEvent(playLogLineContext, fasterEvent);
+      for (EventWriter writer : writers) {
+        try {
+          writer.writeFasterEvent(fasterEvent, logLineContext);
+        } catch (IOException e) {
+          logger.error(e.getLocalizedMessage(), e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void onSlower(LogLineContext logLineContext) {
+    if (playLogLineContext != null && playContentId != null) {
+      SlowerEvent slowerEvent = new SlowerEvent();
+      Event.populateEvent(playLogLineContext, slowerEvent);
+      for (EventWriter writer : writers) {
+        try {
+          writer.writeSlowerEvent(slowerEvent, logLineContext);
+        } catch (IOException e) {
+          logger.error(e.getLocalizedMessage(), e);
+        }
+      }
+    }
+  }
+
+
+  @Override
   public void onShuttingDown(LogLineContext context) {
     logAggregations.onShuttingDown(context);
   }
