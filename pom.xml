@@ -10,7 +10,7 @@
     <url>http://www.literacybridge.org</url>
 
     <properties>
-        <org.springframework.version>3.2.6.RELEASE</org.springframework.version>
+        <org.springframework.version>5.3.5</org.springframework.version>
         <timestamp>${maven.build.timestamp}</timestamp>
         <!-- Empirically, the timestamp is UTC. -->
         <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm'Z'</maven.build.timestamp.format>
