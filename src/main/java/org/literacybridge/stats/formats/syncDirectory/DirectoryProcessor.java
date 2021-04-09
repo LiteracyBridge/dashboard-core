@@ -278,6 +278,7 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
       String packageName = null;
       String recipientId = null;
       LocalDateTime deploymentTime = null;
+      String deploymentUuid = null;
 
       // Get the package name. Use the deployment name if there isn't a discernible package
       if (deploymentProperties != null) {
@@ -298,6 +299,7 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
                   // ignore: we can't parse the time.
               }
           }
+          deploymentUuid = deploymentProperties.getProperty("DEPLOYEDUUID");
       }
 
       // If we didn't get project from deployment properties, try to get from marker file, else file system.
@@ -343,7 +345,8 @@ public class DirectoryProcessor extends AbstractDirectoryProcessor {
       project,
       syncDevice,
       recipientId,
-      deploymentTime);
+      deploymentTime,
+      deploymentUuid);
 
     return retVal;
   }

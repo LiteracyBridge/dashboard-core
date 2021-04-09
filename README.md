@@ -22,7 +22,7 @@ will build the project cleanly and run all the unit tests.
 
 ### Configuring ###
 
-Since, the dashboard-core needs to talk to S3, databases and potentially other services, it has a [built-in configuration mechanism](https://github.com/LiteracyBridge/dashboard-core/blob/master/src/main/java/org/literacybridge/dashboard/config/PropertiesConfig.java) to look up this configuration.  It will look for a properties file in the following locations:
+Since the dashboard-core needs to talk to S3, databases, and potentially other services, it has a [built-in configuration mechanism](https://github.com/LiteracyBridge/dashboard-core/blob/master/src/main/java/org/literacybridge/dashboard/config/PropertiesConfig.java) to look up this configuration.  It will look for a properties file in the following locations:
 
 1.  ./dashboard.properties
 2.  /opt/literacybridge/dashboard.properties

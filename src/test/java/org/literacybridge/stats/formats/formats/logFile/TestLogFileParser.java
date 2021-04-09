@@ -21,7 +21,7 @@ public class TestLogFileParser {
   public static final SyncProcessingContext TEST_FILE_CONTEXT = new SyncProcessingContext("SyncDevice1",
     "10m1d16h37m35s", "TB10",
     "MyVillage", "ContentPackage", "TestProj",
-    "ContentUpdate", null, null);
+    "ContentUpdate", null, null, null);
 
   public static final String TEST_FILE_NAME = "TestFileName";
   public static final LogFilePosition TEST_FILE_POSITION = new LogFilePosition(TEST_FILE_NAME, 1);

@@ -40,9 +40,7 @@ public class FlatStatsWriter implements TalkingBookSyncWriter {
 
     private PrintStream getStream(String fileName) throws IOException {
         PrintStream ps = processContext.getGlobalFileOutputStream(fileName);
-        if (!openedStreams.contains(fileName)) {
-            openedStreams.add(fileName);
-        }
+        openedStreams.add(fileName);
         return ps;
     }
 
@@ -176,6 +174,9 @@ public class FlatStatsWriter implements TalkingBookSyncWriter {
         if (context.deploymentTime != null) {
             lw.append("deployment_timestamp",context.deploymentTime);
         }
+        if (context.deploymentUuid != null) {
+            lw.append("deployment_uuid", context.deploymentUuid);
+        }
 
         // This number has no known utility. Keeping the calculation for historical reasons.
 //        double effCompletions = 0.3 *  aggregation.getCountQuarter() +
@@ -187,19 +188,17 @@ public class FlatStatsWriter implements TalkingBookSyncWriter {
     }
 
     @Override
-    public void writeOperationLog(SyncOperationLog operationLog) throws IOException {
+    public void writeOperationLog(SyncOperationLog operationLog) {
         // This is not valid stats data
     }
 
     @Override
-    public void writeTalkingBookCorruption(TalkingBookCorruption talkingBookCorruption)
-        throws IOException
-    {
+    public void writeTalkingBookCorruption(TalkingBookCorruption talkingBookCorruption) {
         // This is not valid stats data
     }
 
     @Override
-    public void writeTbDataLog(TbDataLine tbDataLine) throws IOException {
+    public void writeTbDataLog(TbDataLine tbDataLine) {
         // We already create a better "tb data log"
     }
 

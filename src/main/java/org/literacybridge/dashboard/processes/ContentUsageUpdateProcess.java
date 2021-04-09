@@ -122,6 +122,7 @@ public class ContentUsageUpdateProcess {
         return context;
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Nonnull
     private UpdateUsageContext processNextStep(@Nonnull UpdateUsageContext context,
         ValidationParameters validationParameters)
@@ -200,16 +201,18 @@ public class ContentUsageUpdateProcess {
             //Check to see if there is an existing record, if there is, then use the existing one, and
             //update the state accordingly.  Namely, if this was an upload that caused an error, re-do it only if
             //the isForced flag is set.
-            UsageUpdateRecord existingRecord = updateRecordWriterService.findByS3Id(
-                    updateRecord.getS3Id());
-            if (existingRecord != null) {
-                context.setUpdateRecord(existingRecord);
+            if (writeToSql) {
+                UsageUpdateRecord existingRecord = updateRecordWriterService.findByS3Id(
+                        updateRecord.getS3Id());
+                if (existingRecord != null) {
+                    context.setUpdateRecord(existingRecord);
 
-                if (existingRecord.getState() == UpdateProcessingState.uploadedToDb
-                        || existingRecord.getState() == UpdateProcessingState.aggegated
-                        || existingRecord.getState() == UpdateProcessingState.done) {
-                    System.out.println("...Already uploaded");
-                    return context;
+                    if (existingRecord.getState() == UpdateProcessingState.uploadedToDb
+                            || existingRecord.getState() == UpdateProcessingState.aggegated
+                            || existingRecord.getState() == UpdateProcessingState.done) {
+                        System.out.println("...Already uploaded");
+                        return context;
+                    }
                 }
             }
         }

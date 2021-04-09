@@ -12,6 +12,7 @@ import org.joda.time.LocalDateTime;
 public class SyncProcessingContext extends ProcessingContext {
   public final LocalDateTime syncTime; // stats time
   public final LocalDateTime deploymentTime;
+  public final String deploymentUuid;
   public final String contentPackage;
   public final String project;
 
@@ -23,7 +24,8 @@ public class SyncProcessingContext extends ProcessingContext {
       String project,
       String deviceSyncedFrom,
       String recipientId,
-      LocalDateTime deploymentTime) {
+      LocalDateTime deploymentTime,
+      String deploymentUuid) {
     super(talkingBookId, village, contentUpdate, deviceSyncedFrom, recipientId);
 
     SyncDirId syncDirId = SyncDirId.parseSyncDir(deploymentId, syncString);
@@ -31,6 +33,7 @@ public class SyncProcessingContext extends ProcessingContext {
     this.contentPackage = contentPackage;
     this.project = project;
     this.deploymentTime = deploymentTime;
+    this.deploymentUuid = deploymentUuid;
   }
 
   @Override
@@ -44,7 +47,7 @@ public class SyncProcessingContext extends ProcessingContext {
     if (contentPackage != null ? !contentPackage.equals(that.contentPackage) : that.contentPackage != null)
       return false;
     if (syncTime != null ? !syncTime.equals(that.syncTime) : that.syncTime != null) return false;
-
+    if (deploymentUuid != null ? !deploymentUuid.equals(that.deploymentUuid) : that.deploymentUuid != null) return false;
     return true;
   }
 
