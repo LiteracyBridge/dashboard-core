@@ -96,6 +96,8 @@ public class ValidatingProcessor extends AbstractDirectoryProcessor {
         String outTalkingBook = line.getOutSn();
         if (!inTalkingBook.equalsIgnoreCase(outTalkingBook) &&
                 !inTalkingBook.equalsIgnoreCase("UNKNOWN")  &&
+                // We changed all B- srns to C-
+                !(inTalkingBook.startsWith("B-") && outTalkingBook.startsWith("C-")) &&
                 // Next line to to an awful bug that was live for about 3 months in 2016, assigning "-- to be assigned --"
                 // as serial numbers.
                 !inTalkingBook.equalsIgnoreCase("-- to be assigned --") ) {

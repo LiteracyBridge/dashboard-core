@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses a tbData file.  Does some work to try to work for older formats.
@@ -138,6 +140,12 @@ public class TbDataParser {
     // If we're ever sure that no more will be produced, uncomment next line, with correct date
     //private static final String hackEndDate = "2017Y10M20";
 
+
+    // ***************** filename format for tbData-v03-date-tbcdid.csv file ***************
+    // Note the (?!.*conflicted copy.*) negative lookahead at the beginning. This is to avoid
+    // the Dropbox files 'foo (JOE's conflicted copy yyyy-mm-dd).bar'
+    public static final Pattern TBDATA_PATTERN_V2 = Pattern.compile(
+        "(?!.*conflicted copy.*)(?:tbdata)?tbData-v(\\d+)-(\\d+)y(\\d+)m(\\d+)d-(.*).csv", Pattern.CASE_INSENSITIVE);
 
 
     private static <T, E> T getKeyByValue(Map<T, E> map, E value) {
@@ -311,7 +319,7 @@ public class TbDataParser {
         }
       } else if (type.equals(int.class) || type.equals(Integer.TYPE)) {
         try {
-          setter.invoke(line, new Integer(lineValues.get(propertyName)));
+          setter.invoke(line, Integer.valueOf(lineValues.get(propertyName)));
         } catch (NumberFormatException e) {
           logger.error("Invalid integer value " + lineValues.get(propertyName) + ".  Ignoring field " + propertyName + ".");
         }
@@ -335,10 +343,12 @@ public class TbDataParser {
   }
 
   private int getTBdataVersion(File f) {
-    int version;
-    String stringVersion = f.getName().substring(8, 10);
-    version = Integer.parseInt(stringVersion);
-    return version;
+        Matcher matcher = TBDATA_PATTERN_V2.matcher(f.getName());
+        if (matcher.matches()) {
+            int version = Integer.parseInt(matcher.group(1));
+            return version;
+        }
+    return -1;
   }
 
   protected Map<String, Integer> processHeader(String[] line) {

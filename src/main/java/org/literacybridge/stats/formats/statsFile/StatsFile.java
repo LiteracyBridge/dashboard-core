@@ -6,6 +6,7 @@ import org.literacybridge.stats.formats.exceptions.CorruptFileException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.Buffer;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -65,7 +66,7 @@ public class StatsFile {
       final String msgId = decodeString(msgIdArray);
 
       int offsetToStats = byteStream.length - (NumberOfStatsPerMsg * SizeOfInt);
-      byteBuffer.position(offsetToStats);
+        ((Buffer)byteBuffer).position(offsetToStats);
 
       StatsFile retVal = new StatsFile(SRN,
         msgId,
@@ -139,7 +140,7 @@ public class StatsFile {
   @Override
   public int hashCode() {
     int result = messageId != null ? messageId.hashCode() : 0;
-    result = 31 * result + SRN != null ? SRN.hashCode() : 0;
+    result = 31 * result + (SRN != null ? SRN.hashCode() : 0);
     result = 31 * result + openCount;
     result = 31 * result + completionCount;
     result = 31 * result + copyCount;

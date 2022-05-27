@@ -9,6 +9,7 @@ import org.joda.time.LocalDateTime;
 import org.literacybridge.main.ProcessingResult;
 import org.literacybridge.dashboard.processes.ContentUsageUpdateProcess;
 import org.literacybridge.stats.api.DirectoryCallbacks;
+import org.literacybridge.stats.formats.tbData.TbDataParser;
 import org.literacybridge.stats.model.DeploymentId;
 import org.literacybridge.stats.model.DeploymentPerDevice;
 import org.literacybridge.stats.model.DirectoryFormat;
@@ -25,11 +26,8 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -52,10 +50,6 @@ public class DirectoryIterator {
     public static final Pattern LB_TIME_PATTERN = Pattern.compile(
         "(\\d+)y(\\d+)m(\\d+)d(\\d+)h(\\d+)m(\\d+)s.*", Pattern.CASE_INSENSITIVE);
 
-    // Note the (?!.*conflicted copy.*) negative lookahead at the beginning. This is to avoid
-    // the Dropbox files 'foo (JOE's conflicted copy yyyy-mm-dd).bar'
-    private static final Pattern TBDATA_PATTERN_V2 = Pattern.compile(
-            "(?!.*conflicted copy.*)tbData-v(\\d+)-(\\d+)y(\\d+)m(\\d+)d-(.*).csv", Pattern.CASE_INSENSITIVE);
     private static final String MANIFEST_FILE_NAME = "StatsPackageManifest.json";
 
     //tbData-v00-2014y05m02d-9d8839de.csv
@@ -372,11 +366,13 @@ public class DirectoryIterator {
                                 for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(TBDATA_PATTERN))) {
                                     callbacks.processTbDataFile(potential, false);
                                 }
-                                for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(TBDATA_PATTERN_V2))) {
+                                for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(
+                                    TbDataParser.TBDATA_PATTERN_V2))) {
                                     callbacks.processTbDataFile(potential, false);
                                 }
                             } else {
-                                for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(TBDATA_PATTERN_V2))) {
+                                for (File potential : tbdataDir.listFiles((FilenameFilter) new RegexFileFilter(
+                                    TbDataParser.TBDATA_PATTERN_V2))) {
                                     logger.debug(String.format("    operational data: %s", potential.getName()));
                                     callbacks.processTbDataFile(potential, true);
                                 }
