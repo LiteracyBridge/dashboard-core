@@ -115,7 +115,7 @@ public class TbDataParser {
     .build();
 
 
-  protected static final String[] V3_FIELD_NAMES = new String[]{
+  public static final String[] V3_FIELD_NAMES = new String[]{
     "PROJECT", "UPDATE_DATE_TIME", "OUT_SYNCH_DIR", "LOCATION", "ACTION", "DURATION_SEC", "OUT-SN", "OUT-DEPLOYMENT",
     "OUT-IMAGE", "OUT-FW-REV", "OUT-COMMUNITY", "OUT-ROTATION-DATE", "IN-SN", "IN-DEPLOYMENT", "IN-IMAGE", "IN-FW-REV",
     "IN-COMMUNITY", "IN-LAST-UPDATED", "IN-SYNCH-DIR", "IN-DISK-LABEL", "CHKDSK CORRUPTION?", "FLASH-SN", "FLASH-REFLASHES",
@@ -147,6 +147,7 @@ public class TbDataParser {
     public static final Pattern TBDATA_PATTERN_V2 = Pattern.compile(
         "(?!.*conflicted copy.*)(?:tbdata)?tbData-v(\\d+)-(\\d+)y(\\d+)m(\\d+)d-(.*).csv", Pattern.CASE_INSENSITIVE);
 
+    public static final Pattern FW_REV_PATTERN = Pattern.compile("(?i)^r\\d{4}$");
 
     private static <T, E> T getKeyByValue(Map<T, E> map, E value) {
     for (Map.Entry<T, E> entry : map.entrySet()) {
@@ -179,6 +180,12 @@ public class TbDataParser {
     int firstMissingIx = 0;
     int numMissingFields = 5;
     int lengthToExamine = 0;
+    // **************** set up for "multiple images" hack ****************
+      int outImageIx = 0;
+      int outFwRevIx = 0;
+      int inImageIx = 0;
+      int inFwRevIx = 0;
+      int multipleImagesLength = 999;   // We'll look for lines longer than this.
 
     for (String[] line : lines) {
 
@@ -194,15 +201,18 @@ public class TbDataParser {
             // **************** set up for "stats-only" hack ****************
             // Count duplicated headings.
             Set<String> headings = new HashSet<>();
-            int numDuplicatedHeadings = 0;  // "FLASH_ROTATION" occurs 5 times: 4 duplicates
+            // "FLASH_ROTATION" occurs 5 times: 4 duplicates. The map of header name to index will only store
+            // one of the "FLASH_ROTATION" mappings. So, the data lines will have more columns than the header.
+            int numDuplicatedHeadings = 0;
             for (String heading: line) {
                 if (headings.contains(heading))
                     numDuplicatedHeadings++;
                 else
                     headings.add(heading);
             }
-            // 5 missing fields, but 4 duplicated headings.
+            // 5 missing fields, and 4 duplicated headings.
             lengthToExamine = headerMap.size()+numDuplicatedHeadings-numMissingFields;
+
         } else {
             includesHeaders = false;
 
@@ -213,29 +223,41 @@ public class TbDataParser {
         updateDateTimeIx = headerMap.get(updateDateTimeHeading);
         actionIx = headerMap.get(actionHeading);
         firstMissingIx = headerMap.get(firstMissingHeading);
+
+        if (headerMap == V3_TB_MAP) {
+            outImageIx = headerMap.get("OUT-IMAGE");
+            outFwRevIx = headerMap.get("OUT-FW-REV");
+            inImageIx = headerMap.get("IN-IMAGE");
+            inFwRevIx = headerMap.get("IN-FW-REV");
+            // Make sure the data looks like we expect it to.
+            if (outImageIx == outFwRevIx - 1 && inImageIx == inFwRevIx - 1) {
+                // We must be able to index one past the larger of in or out FwRev.
+                multipleImagesLength = Math.max(outFwRevIx, inFwRevIx) + 2;
+            }
+        }
       }
       if (!(lineNumber == 1 && includesHeaders)) {
         try {
-          // **************** "stats-only" hack ****************
-          // Fix for a bug in TB-Loader from 2017-07-24 through 2017-10-19.
-          // 5 columns were missing from the tbdata file when the operation was "stats-only":
-          //     OUT-DEPLOYMENT, OUT-IMAGE, OUT-FW-REV, OUT-COMMUNITY, and OUT-ROTATION-DATE
-          // were omitted from columns 8, 9, 10, 11, and 12 (starting with 1).
-          // This caused 'IN-SN' to be written in the column for 'OUT-DEPLOYMENT'.
-          // So, if the number of elements is 5 less than it should be and
-          //     ACTION is "stats-only", and
-          //     UPDATE_DATE_TIME >= "2017Y07M24" and
-          //     OUT-DEPLOYMENT matches (?i)[AB]-[0-9a-f]{8} then
-          //   Insert 5 blank elements before the column 'OUT-DEPLOYMENT', to slide 'IN-SN' into
-          //     the correct column.
-          // Someday we may be able to add another predicate like <= "2017Y10M20" and, but as
-          // of 2017/12, bad data is still coming in.
           if (line.length == lengthToExamine
                   && line[actionIx].equalsIgnoreCase(statsAction)
                   && line[updateDateTimeIx].compareToIgnoreCase(hackStartDate) > 0
                   // If we're ever sure that no more will be produced, uncomment next line
                   // && line[updateDateTimeIx].compareToIgnoreCase(hackEndDate) < 0
                   && line[firstMissingIx].matches(snRegex)) {
+              // **************** "stats-only" hack ****************
+              // Fix for a bug in TB-Loader from 2017-07-24 through 2017-10-19.
+              // 5 columns were missing from the tbdata file when the operation was "stats-only":
+              //     OUT-DEPLOYMENT, OUT-IMAGE, OUT-FW-REV, OUT-COMMUNITY, and OUT-ROTATION-DATE
+              // were omitted from columns 8, 9, 10, 11, and 12 (starting with 1).
+              // This caused 'IN-SN' to be written in the column for 'OUT-DEPLOYMENT'.
+              // So, if the number of elements is 5 less than it should be and
+              //     ACTION is "stats-only", and
+              //     UPDATE_DATE_TIME >= "2017Y07M24" and
+              //     OUT-DEPLOYMENT matches (?i)[AB]-[0-9a-f]{8} then
+              //   Insert 5 blank elements before the column 'OUT-DEPLOYMENT', to slide 'IN-SN' into
+              //     the correct column.
+              // Someday we may be able to add another predicate like <= "2017Y10M20" and, but as
+              // of 2017/12, bad data is still coming in.
               logger.warn("Applying 'stats-only' hack. (See source for details.)");
               String[] newLine = new String[line.length+numMissingFields];
               System.arraycopy(line, 0, newLine, 0, firstMissingIx);
@@ -244,6 +266,32 @@ public class TbDataParser {
                   newLine[firstMissingIx+ix] = "";
               }
               line = newLine;
+          } else if (line.length >= multipleImagesLength) {
+              // **************** "multiple images" hack ****************
+              // When support for multiple images was added to the TB-Loader (it had always been in the TB),
+              // the tbdata entry for the image included both images, separated by a comma. So, in a .CSV,
+              // it looks like two columns. Solution is to enclose them in quotes. Meanwhile, we have some
+              // tbdata files with an image name in what should be a firmware revision column (up to two
+              // of those, one for input and one for output). The hack is to look at the firmware revision
+              // columns, and if they don't look like good revisions, but the next column does, collapse the
+              // images into a single column, and shift the remaining data left by one.
+              int newLen = line.length;
+              if (!FW_REV_PATTERN.matcher(line[outFwRevIx]).matches() && FW_REV_PATTERN.matcher(line[outFwRevIx+1]).matches()) {
+                  line[outImageIx] = line[outImageIx] + "," + line[outFwRevIx];
+                  newLen -= 1;
+                  System.arraycopy(line, outFwRevIx+1, line, outFwRevIx, newLen-outFwRevIx);
+              }
+              if (!FW_REV_PATTERN.matcher(line[inFwRevIx]).matches() && FW_REV_PATTERN.matcher(line[inFwRevIx+1]).matches()) {
+                  line[inImageIx] = line[inImageIx] + "," + line[inFwRevIx];
+                  newLen -= 1;
+                  System.arraycopy(line, inFwRevIx+1, line, inFwRevIx, newLen-inFwRevIx);
+              }
+              if (line.length != newLen) {
+                  logger.warn("Applying 'multiple image' hack. (See source for details.)");
+                  String[] newLine = new String[newLen];
+                  System.arraycopy(line, 0, newLine, 0, newLen);
+                  line = newLine;
+              }
           }
 
           retVal.add(processLine(line, headerMap));
