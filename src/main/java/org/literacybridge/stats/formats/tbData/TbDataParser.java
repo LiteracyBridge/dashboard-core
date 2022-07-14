@@ -149,7 +149,7 @@ public class TbDataParser {
 
     public static final Pattern FW_REV_PATTERN = Pattern.compile("(?i)^r\\d{4}$");
 
-    private static <T, E> T getKeyByValue(Map<T, E> map, E value) {
+    private static <T, E> T getKeyByValue(Map<T, E> map, @SuppressWarnings("SameParameterValue") E value) {
     for (Map.Entry<T, E> entry : map.entrySet()) {
       if (Objects.equals(value, entry.getValue())) {
         return entry.getKey();
@@ -167,12 +167,15 @@ public class TbDataParser {
     int lineNumber = 1;
     List<String[]> lines = csvReader.readAll();
 
-    Map<String, Integer> headerMap = V3_TB_MAP;
-    if (getTBdataVersion(tbdataFile) == 1) {
-      headerMap = V1_TB_MAP;
-    } else if (getTBdataVersion(tbdataFile) == 0) {
-      headerMap = V0_TB_MAP;
-    }
+      Map<String, Integer> headerMap = V3_TB_MAP;
+      boolean isV3Header = true;
+      if (getTBdataVersion(tbdataFile) == 1) {
+          headerMap = V1_TB_MAP;
+          isV3Header = false;
+      } else if (getTBdataVersion(tbdataFile) == 0) {
+          headerMap = V0_TB_MAP;
+          isV3Header = false;
+      }
 
     // **************** set up for "stats-only" hack ****************
     int updateDateTimeIx = 0;
@@ -224,7 +227,7 @@ public class TbDataParser {
         actionIx = headerMap.get(actionHeading);
         firstMissingIx = headerMap.get(firstMissingHeading);
 
-        if (headerMap == V3_TB_MAP) {
+        if (isV3Header) {
             outImageIx = headerMap.get("OUT-IMAGE");
             outFwRevIx = headerMap.get("OUT-FW-REV");
             inImageIx = headerMap.get("IN-IMAGE");
@@ -296,11 +299,7 @@ public class TbDataParser {
 
           retVal.add(processLine(line, headerMap));
           processLine(line, headerMap);
-        } catch (NoSuchMethodException e) {
-          throw new IOException(e);
-        } catch (IllegalAccessException e) {
-          throw new IOException(e);
-        } catch (InvocationTargetException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
           throw new IOException(e);
         }
 
@@ -321,6 +320,7 @@ public class TbDataParser {
     return retVal;
   }
 
+  @SuppressWarnings("RedundantThrows")
   protected void setProperty(String propertyName, Map<String, String> lineValues, TbDataLine line) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
 
     if (lineValues.containsKey(propertyName)) {
@@ -350,7 +350,7 @@ public class TbDataParser {
         return;
       }
 
-      Class type = setter.getParameterTypes()[0];
+      Class<?> type = setter.getParameterTypes()[0];
       String value = null;
       if (type.equals(Date.class)) {
         try {
@@ -393,8 +393,7 @@ public class TbDataParser {
   private int getTBdataVersion(File f) {
         Matcher matcher = TBDATA_PATTERN_V2.matcher(f.getName());
         if (matcher.matches()) {
-            int version = Integer.parseInt(matcher.group(1));
-            return version;
+            return Integer.parseInt(matcher.group(1));
         }
     return -1;
   }
